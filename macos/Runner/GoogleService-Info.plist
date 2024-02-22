@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyA-xAqvpNcToNyMkGuZ_Zbvky6xnYC3n0E</string>
+	<key>GCM_SENDER_ID</key>
+	<string>924845558356</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.playersclique.playersClique.RunnerTests</string>
+	<key>PROJECT_ID</key>
+	<string>players-clique</string>
+	<key>STORAGE_BUCKET</key>
+	<string>players-clique.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:924845558356:ios:1bef8189a147e1c3c4fbc1</string>
+</dict>
+</plist>

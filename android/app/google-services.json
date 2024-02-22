@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "924845558356",
+    "project_id": "players-clique",
+    "storage_bucket": "players-clique.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:924845558356:android:84b623013c2ae57ac4fbc1",
+        "android_client_info": {
+          "package_name": "com.players_clique.players_clique"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9GwoGUoqle2_rZ3tNVzc8ARj1rikOG_0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
