@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:players_clique/src/icons/my_flutter_app_icons.dart';
 
-import '../../components/messages/m_preview.dart';
+
+
+import '../../icons/player_icon_icons.dart';
 
 class Map_Page extends StatefulWidget {
   @override
@@ -43,7 +44,7 @@ class _Map_Page extends State<Map_Page> {
                             Text("Тут будет реализация карт"),
                             InkWell(
                               onTap: () {},
-                              child: Icon(MyFlutterApp.search),
+                              child: Icon(PlayerIcon.search),
                             ),
                             SizedBox(
                               width: 30,

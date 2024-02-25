@@ -43,6 +43,11 @@ dependencies:
   firebase_core_platform_interface: ^5.0.0
   cloud_firestore: ^4.15.4
   google_nav_bar: ^5.0.6
+  firebase_storage: ^11.6.6
+  file_picker: ^6.1.1
+  permission_handler: ^11.3.0
+  platform_file: ^0.1.0
+  path: ^1.8.0
 
 dev_dependencies:
   flutter_test:
@@ -71,9 +76,9 @@ flutter:
     - assets/image/sportman1.png
     - assets/image/logo.svg
     - assets/vector/background_auth.svg
-    - assets/vector/background_auth.svg
-    - assets/vector/background_auth.svg
-    - assets/vector/background_auth.svg
+    - assets/vector/Add_Post.svg
+    - assets/vector/Add_Vector.svg
+    - assets/vector/Add_Friends.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
@@ -91,9 +96,10 @@ flutter:
       fonts:
         - asset: fonts/Yakin.ttf
 
-    - family:  MyFlutterApp
+    - family:  PlayerIcon
       fonts:
-        - asset: fonts/MyFlutterApp.ttf
+        - asset: fonts/PlayerIcon.ttf
+
 
 #     - family: Trajan Pro
 #       fonts:
