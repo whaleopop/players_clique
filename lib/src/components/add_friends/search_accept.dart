@@ -17,6 +17,7 @@ class MessageProfileAccept extends StatefulWidget {
     required this.uid,
   }) : super(key: key);
 
+
   @override
   _MessageProfileAcceptState createState() => _MessageProfileAcceptState();
 }
@@ -76,7 +77,7 @@ class _MessageProfileAcceptState extends State<MessageProfileAccept> {
         requestList;
         requestList1;
         friendList;
-        friendList1;// Directly assign the list, not a Future
+        friendList1; // Directly assign the list, not a Future
       });
 
       // Update the Firestore document with the new list
@@ -120,7 +121,19 @@ class _MessageProfileAcceptState extends State<MessageProfileAccept> {
           textDirection: TextDirection.ltr,
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            widget.iconProfile,
+            Container(
+              width: 80, // Задайте желаемый размер иконки
+              height: 80, // Задайте желаемый размер иконки
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+              ),
+              child: ClipOval(
+                child: Image(
+                  image: widget.iconProfile.image, // Используйте свойство image из ImageProvider
+                  fit: BoxFit.cover, // Установите BoxFit.cover
+                ),
+              ),
+            ),
             Column(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -139,7 +152,7 @@ class _MessageProfileAcceptState extends State<MessageProfileAccept> {
                       onTap: _addFriedsUidFromList,
                       child: Container(
                         child: Icon(
-                          PlayerIcon.accept_friends,
+                          PlayerIcon.person_add_alt,
                           color: Colors.white,
                         ),
                         height: 45,
@@ -159,14 +172,15 @@ class _MessageProfileAcceptState extends State<MessageProfileAccept> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 10,),
+                    SizedBox(
+                      width: 10,
+                    ),
                     InkWell(
                       onTap: _removeUidFromList,
                       child: Container(
                         child: Icon(
-                          PlayerIcon.declaim_friends,
+                          PlayerIcon.person_cancel_fill,
                           color: Colors.white,
-
                         ),
                         height: 45,
                         width: 45,

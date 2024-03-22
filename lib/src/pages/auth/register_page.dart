@@ -58,21 +58,46 @@ class _MyRegisterPage extends State<MyRegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-        scaffoldBackgroundColor:
-        Colors.white, // Установка белого фона для всех Scaffold
-      ),
-      home: Scaffold(
+    return SafeArea(
+      child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.white, // Устанавливаем белый фон для Scaffold
         body: Stack(children: [
           Center(
-              child: SvgPicture.asset(
-                "assets/vector/background_auth.svg",
-                colorFilter: null,
-                fit: BoxFit.cover,
-              )),
+              child: Stack(
+                children: [
+                  Transform.translate(
+                    offset: Offset(0, -60),
+                    child: Transform.rotate(
+                      angle: -50.33 * 3.14159 / 180, // Angle in radians
+
+                      child: Transform.scale(
+                        scale: 2,
+                        child: Container(
+                          width: 1000, // Line width
+                          height: 50, // Line thickness
+                          color: Color(0xFF0071BC), // Line color
+                        ),
+                      ),
+                    ),
+                  ),
+                  Transform.translate(
+                    offset: Offset(0, 400),
+                    child: Transform.rotate(
+                      angle: -128.16 * 3.14159 / 180, // Angle in radians
+
+                      child: Transform.scale(
+                        scale: 2,
+                        child: Container(
+                          width: 1000, // Line width
+                          height: 50, // Line thickness
+                          color: Color(0xFF0071BC), // Line color
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),),
           Align(
             alignment: Alignment.center,
             child: Container(

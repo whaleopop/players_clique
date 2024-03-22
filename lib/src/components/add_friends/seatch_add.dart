@@ -79,7 +79,19 @@ class _MessageProfileAddState extends State<MessageProfileAdd> {
           textDirection: TextDirection.ltr,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            widget.iconProfile,
+            Container(
+              width: 80, // Задайте желаемый размер иконки
+              height: 80, // Задайте желаемый размер иконки
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+              ),
+              child: ClipOval(
+                child: Image(
+                  image: widget.iconProfile.image, // Используйте свойство image из ImageProvider
+                  fit: BoxFit.cover, // Установите BoxFit.cover
+                ),
+              ),
+            ),
             Text(
               widget.text,
               style: const TextStyle(
@@ -92,7 +104,7 @@ class _MessageProfileAddState extends State<MessageProfileAdd> {
               onTap: _addUidToList,
               child: Container(
                 child: Icon(
-                  PlayerIcon.add_friends,
+                  PlayerIcon.person_add_alt,
                   color: Colors.white,
                 ),
                 height: 50,

@@ -4,10 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:players_clique/src/components/my_text_field.dart';
+import 'package:players_clique/src/pages/screans/profile_sub_screen/add_friend.dart';
 import 'package:provider/provider.dart';
 
 import '../../components/messages/message_user.dart';
+import '../../icons/player_icon_icons.dart';
 import '../../services/auth/auth_service.dart';
+import '../../services/cache/cache.dart';
+import '../../services/chat/chat_service.dart';
 import 'chat/chat_page.dart';
 
 class Message_Page extends StatefulWidget {
@@ -22,6 +26,7 @@ class _Message_Page extends State<Message_Page> {
       []; // State variable for filtered users
   List<DocumentSnapshot> filteredUsersReUid =
       []; // State variable for filtered users
+  final cacheService = CacheService();
 
   Future<List<String>> loadUserField(String fieldName) async {
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -45,6 +50,25 @@ class _Message_Page extends State<Message_Page> {
     _filterUsersUid();
     return SafeArea(
       child: Scaffold(
+        appBar: CupertinoNavigationBar(
+          backgroundColor: Color(0xFF0071BC),
+          trailing: IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                CupertinoPageRoute(builder: (context) => Add_Friends_Page()),
+              );
+            },
+            icon: Icon(
+              PlayerIcon.person_add_alt,
+              color: Colors.white,
+            ),
+          ),
+          middle: Text(
+            'Сообшения',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
         body: Column(
           children: [
             Expanded(
@@ -66,9 +90,10 @@ class _Message_Page extends State<Message_Page> {
         List<dynamic> requestRefs = userDoc.get('players');
         List<DocumentSnapshot> requestUsers = [];
 
-        // Assuming requestRefs is a list of user IDs (strings)
         for (var userId in requestRefs) {
           if (userId is String) {
+
+
             DocumentSnapshot docSnapshot = await FirebaseFirestore.instance
                 .collection('users')
                 .doc(userId)
@@ -78,8 +103,6 @@ class _Message_Page extends State<Message_Page> {
             print("Unexpected type for user ID: $userId");
           }
         }
-
-        //  print("Request Users: $requestUsers"); // Debugging print statement
 
         if (mounted) {
           setState(() {
@@ -103,11 +126,12 @@ class _Message_Page extends State<Message_Page> {
 
   Widget _buildRequestListItem(DocumentSnapshot document) {
     Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
-
+    final authService = Provider.of<AuthService>(context, listen: false);
+    String? uid = authService.getCurrentUserUid();
     if (_auth.currentUser!.email != data['email']) {
       return ListTile(
         title: MessageProfile(
-          iconProfile: Image.network(data['photourl']),
+          iconProfile: NetworkImage(data['photourl']),
           onTap: () {
             Navigator.push(
                 context,
@@ -119,9 +143,10 @@ class _Message_Page extends State<Message_Page> {
                 ));
           },
           text: data['fio'],
-          uid: data['uid'],
+          senderId: data['uid'],
+          receiverId: uid??"",
+          chatService: ChatService(),
         ),
-
       );
     } else {
       return Container();
