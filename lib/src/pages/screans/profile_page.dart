@@ -6,7 +6,6 @@ import '../../utils/web_update.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -35,7 +34,7 @@ class _Profile_Page extends State<Profile_Page> {
 
   late Future<String?> _fioFuture;
   late Future<String?> _photoFuture;
-  late Future<List<String>> _playersFuture;
+  late Future<int> _friendsCountFuture;
   late Future<List<DocumentSnapshot>> _postsFuture;
 
   @override
@@ -43,8 +42,19 @@ class _Profile_Page extends State<Profile_Page> {
     super.initState();
     _fioFuture = loadUserField("fio");
     _photoFuture = loadUserField("photourl");
-    _playersFuture = loadUserFieldList("players");
+    _friendsCountFuture = _fetchFriendsCount();
     _postsFuture = _fetchPosts();
+  }
+
+  Future<int> _fetchFriendsCount() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final uid = authService.getCurrentUserUid();
+    if (uid == null) return 0;
+    final snap = await FirebaseFirestore.instance
+        .collection('chat_rooms')
+        .where('participants', arrayContains: uid)
+        .get();
+    return snap.docs.length;
   }
 
   Future<File> cropImageToCircle(File file) async {
@@ -417,10 +427,10 @@ class _Profile_Page extends State<Profile_Page> {
                               _statItem('${snapshot.data?.length ?? 0}', 'Посты'),
                         ),
                         Container(width: 1, height: 36, color: Colors.grey.shade300),
-                        FutureBuilder(
-                          future: _playersFuture,
-                          builder: (context, AsyncSnapshot<List<String>> snapshot) =>
-                              _statItem('${snapshot.data?.length ?? 0}', 'Друзья'),
+                        FutureBuilder<int>(
+                          future: _friendsCountFuture,
+                          builder: (context, snapshot) =>
+                              _statItem('${snapshot.data ?? 0}', 'Друзья'),
                         ),
                       ],
                     ),
