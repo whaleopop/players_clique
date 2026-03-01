@@ -103,6 +103,15 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<void> updatePresence() async {
+    final uid = _firebaseAuth.currentUser?.uid;
+    if (uid == null) return;
+    await _firestore.collection('users').doc(uid).set(
+      {'lastSeen': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
+  }
+
   Future<void> signOut() async {
     return await FirebaseAuth.instance.signOut();
   }

@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:math';
 
+import '../../utils/web_update.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -341,6 +343,19 @@ class _Profile_Page extends State<Profile_Page> {
                       ),
                     ),
                   ),
+                  // Кнопка обновления (для iOS PWA)
+                  if (kIsWeb)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Tooltip(
+                        message: 'Обновить приложение',
+                        child: IconButton(
+                          onPressed: reloadAndUpdate,
+                          icon: const Icon(Icons.system_update_alt, color: Colors.white70, size: 22),
+                        ),
+                      ),
+                    ),
                   // Белая карточка профиля
                   Padding(
                     padding: const EdgeInsets.only(top: 90),

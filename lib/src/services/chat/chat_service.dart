@@ -47,6 +47,28 @@ class ChatService extends ChangeNotifier {
       SetOptions(merge: true),
     );
     await batch.commit();
+    _checkMutualFriendship(currentUserId, receiverId, chatRoomId);
+  }
+
+  Future<void> _checkMutualFriendship(
+      String senderId, String receiverId, String chatRoomId) async {
+    final check = await _firestore
+        .collection('chat_rooms')
+        .doc(chatRoomId)
+        .collection('messages')
+        .where('senderId', isEqualTo: receiverId)
+        .limit(1)
+        .get();
+    if (check.docs.isNotEmpty) {
+      final batch = _firestore.batch();
+      batch.update(_firestore.collection('users').doc(senderId), {
+        'friends': FieldValue.arrayUnion([receiverId]),
+      });
+      batch.update(_firestore.collection('users').doc(receiverId), {
+        'friends': FieldValue.arrayUnion([senderId]),
+      });
+      await batch.commit();
+    }
   }
 
   Future<void> sendImageMessage(
