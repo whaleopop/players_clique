@@ -74,6 +74,7 @@ flutter:
     - assets/vector/Add_Vector.svg
     - assets/vector/Add_Friends.svg
     - assets/image/Union.png
+    - stickers/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

@@ -7,35 +7,37 @@ import 'package:players_clique/src/services/auth/auth_service.dart';
 import 'package:players_clique/src/services/chat/chat_service.dart';
 import 'package:provider/provider.dart';
 
-const List<Map<String, Object>> _stickerGroups = [
-  {
-    'name': 'Эмоции',
-    'stickers': [
-      '😀', '😂', '🥹', '😍', '🥳', '😎', '🤩', '😜',
-      '😏', '🥺', '😤', '😡', '🤯', '😱', '🤔', '🙄',
-    ],
-  },
-  {
-    'name': 'Спорт',
-    'stickers': [
-      '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱',
-      '🏋️', '🤸', '🏊', '🚴', '🧘', '🤼', '🥊', '🏆',
-    ],
-  },
-  {
-    'name': 'Игры',
-    'stickers': [
-      '🎮', '🕹️', '🃏', '🎲', '🧩', '👾', '🤖', '🦸',
-      '🦹', '🐉', '⚔️', '🛡️', '✨', '🎯', '🎳', '🏅',
-    ],
-  },
-  {
-    'name': 'Прочее',
-    'stickers': [
-      '❤️', '🔥', '💯', '👍', '👎', '🙌', '💪', '🤝',
-      '🎉', '💥', '⭐', '🌈', '🎵', '🍕', '🚀', '🌙',
-    ],
-  },
+const List<String> _stickers = [
+  'stickers/стикер1.png',
+  'stickers/стикер2.png',
+  'stickers/стикер 3 копия.png',
+  'stickers/стикер4 копия.png',
+  'stickers/стикер 5 копия.png',
+  'stickers/стикер6копия.png',
+  'stickers/стикер 7 копия.png',
+  'stickers/стикер67 копия.png',
+  'stickers/стикер 99 копия.png',
+  'stickers/стикер 999 копия.png',
+  'stickers/стикер555 копия.png',
+  'stickers/алелеле копия.png',
+  'stickers/алинаааа копия.png',
+  'stickers/ангелека копия.png',
+  'stickers/аринга2 копия.png',
+  'stickers/аринеее копия.png',
+  'stickers/вига копия.png',
+  'stickers/виккаа копия.png',
+  'stickers/всеее копия.png',
+  'stickers/дианга копия.png',
+  'stickers/дианна копия.png',
+  'stickers/дидана.png',
+  'stickers/йааааа копия.png',
+  'stickers/квартиииры копия.png',
+  'stickers/крисис копия.png',
+  'stickers/крисссс копия.png',
+  'stickers/михааааа копия.png',
+  'stickers/мишиша копия.png',
+  'stickers/онооо копия.png',
+  'stickers/яяяяяя копия.png',
 ];
 
 class ChatPage extends StatefulWidget {
@@ -52,12 +54,11 @@ class ChatPage extends StatefulWidget {
   State<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> with SingleTickerProviderStateMixin {
+class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ChatService _chatService = ChatService();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final ScrollController _scrollController = ScrollController();
-  late TabController _tabController;
 
   bool _showStickers = false;
   bool _isSending = false;
@@ -67,13 +68,11 @@ class _ChatPageState extends State<ChatPage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _stickerGroups.length, vsync: this);
     _loadReceiverInfo();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -133,9 +132,9 @@ class _ChatPageState extends State<ChatPage> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _sendSticker(String emoji) async {
+  Future<void> _sendSticker(String assetPath) async {
     setState(() => _showStickers = false);
-    await _chatService.sendStickerMessage(widget.receiverUserID, emoji);
+    await _chatService.sendStickerMessage(widget.receiverUserID, assetPath);
   }
 
   @override
@@ -257,7 +256,7 @@ class _ChatPageState extends State<ChatPage> with SingleTickerProviderStateMixin
             IconButton(
               onPressed: () => setState(() => _showStickers = !_showStickers),
               icon: Icon(
-                _showStickers ? Icons.keyboard : Icons.emoji_emotions_outlined,
+                _showStickers ? Icons.keyboard : Icons.sticky_note_2_outlined,
                 color: const Color(0xFF0071BC),
               ),
             ),
@@ -322,48 +321,25 @@ class _ChatPageState extends State<ChatPage> with SingleTickerProviderStateMixin
 
   Widget _buildStickerPanel() {
     return Container(
-      height: 280,
+      height: 260,
       color: Colors.white,
-      child: Column(
-        children: [
-          TabBar(
-            controller: _tabController,
-            labelColor: const Color(0xFF0071BC),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: const Color(0xFF0071BC),
-            tabs: _stickerGroups
-                .map((g) => Tab(text: g['name'] as String))
-                .toList(),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: _stickerGroups.map((group) {
-                final stickers = group['stickers'] as List;
-                return GridView.builder(
-                  padding: const EdgeInsets.all(8),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 5,
-                    mainAxisSpacing: 4,
-                    crossAxisSpacing: 4,
-                  ),
-                  itemCount: stickers.length,
-                  itemBuilder: (context, index) {
-                    return GestureDetector(
-                      onTap: () => _sendSticker(stickers[index] as String),
-                      child: Center(
-                        child: Text(
-                          stickers[index] as String,
-                          style: const TextStyle(fontSize: 36),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              }).toList(),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(10),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+        ),
+        itemCount: _stickers.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () => _sendSticker(_stickers[index]),
+            child: Image.asset(
+              _stickers[index],
+              fit: BoxFit.contain,
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

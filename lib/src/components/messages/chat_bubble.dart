@@ -128,9 +128,12 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildStickerBubble() {
-    return Text(
+    return Image.asset(
       message,
-      style: const TextStyle(fontSize: 72),
+      width: 140,
+      height: 140,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => Text(message, style: const TextStyle(fontSize: 48)),
     );
   }
 
