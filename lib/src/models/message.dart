@@ -6,20 +6,28 @@ class Message {
   final String receiverId;
   final String message;
   final Timestamp timestamp;
+  final String type; // 'text', 'image', 'sticker'
+  final String? mediaUrl;
 
-  Message(
-      {required this.senderId,
-      required this.senderEmail,
-      required this.receiverId,
-      required this.message,
-      required this.timestamp});
-  Map<String, dynamic> toMap(){
-    return{
-      'senderId':senderId,
-      'senderEmail':senderEmail,
-      'receiverId':receiverId,
-      'message':message,
-      'timestamp':timestamp,
+  Message({
+    required this.senderId,
+    required this.senderEmail,
+    required this.receiverId,
+    required this.message,
+    required this.timestamp,
+    this.type = 'text',
+    this.mediaUrl,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'senderId': senderId,
+      'senderEmail': senderEmail,
+      'receiverId': receiverId,
+      'message': message,
+      'timestamp': timestamp,
+      'type': type,
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
     };
   }
 }

@@ -47,7 +47,6 @@ class _Message_Page extends State<Message_Page> {
 
   @override
   Widget build(BuildContext context) {
-    _filterUsersUid();
     return SafeArea(
       child: Scaffold(
         appBar: CupertinoNavigationBar(
@@ -129,27 +128,26 @@ class _Message_Page extends State<Message_Page> {
     final authService = Provider.of<AuthService>(context, listen: false);
     String? uid = authService.getCurrentUserUid();
     if (_auth.currentUser!.email != data['email']) {
-      return ListTile(
-        title: MessageProfile(
-          iconProfile: NetworkImage(data['photourl']),
-          onTap: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatPage(
-                    receiveruserEmail: data['fio'],
-                    receiverUserID: data['uid'],
-                  ),
-                ));
-          },
-          text: data['fio'],
-          senderId: data['uid'],
-          receiverId: uid??"",
-          chatService: ChatService(),
-        ),
+      return MessageProfile(
+        iconProfile: NetworkImage(data['photourl']),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatPage(
+                receiveruserEmail: data['fio'],
+                receiverUserID: data['uid'],
+              ),
+            ),
+          );
+        },
+        text: data['fio'],
+        senderId: data['uid'],
+        receiverId: uid ?? '',
+        chatService: ChatService(),
       );
     } else {
-      return Container();
+      return const SizedBox.shrink();
     }
   }
 }
