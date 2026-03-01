@@ -11,7 +11,9 @@ class Message_Page extends StatefulWidget {
   _Message_Page createState() => _Message_Page();
 }
 
-class _Message_Page extends State<Message_Page> {
+class _Message_Page extends State<Message_Page> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -32,6 +34,7 @@ class _Message_Page extends State<Message_Page> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final currentUid = _auth.currentUser!.uid;
     return SafeArea(
       child: Scaffold(

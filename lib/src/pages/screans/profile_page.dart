@@ -25,7 +25,9 @@ class Profile_Page extends StatefulWidget {
   _Profile_Page createState() => _Profile_Page();
 }
 
-class _Profile_Page extends State<Profile_Page> {
+class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   PlatformFile? pickedFile;
   UploadTask? uploadTask;
   List<DocumentSnapshot> filteredUsersReUid =
@@ -334,6 +336,7 @@ class _Profile_Page extends State<Profile_Page> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return SafeArea(
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F7FA),

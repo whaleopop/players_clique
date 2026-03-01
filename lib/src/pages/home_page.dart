@@ -47,6 +47,7 @@ class _MyHomePage extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
       bottomNavigationBar: CurvedNavigationBar(
         backgroundColor: const Color(0xFFF5F7FA),
         animationDuration: const Duration(milliseconds: 300),

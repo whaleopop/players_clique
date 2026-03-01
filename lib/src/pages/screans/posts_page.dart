@@ -7,7 +7,9 @@ class Posts_Page extends StatefulWidget {
   _Posts_Page createState() => _Posts_Page();
 }
 
-class _Posts_Page extends State<Posts_Page> {
+class _Posts_Page extends State<Posts_Page> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   static const int _pageSize = 8;
   final List<DocumentSnapshot> _posts = [];
   DocumentSnapshot? _lastDoc;
@@ -72,6 +74,7 @@ class _Posts_Page extends State<Posts_Page> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return SafeArea(
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F7FA),
