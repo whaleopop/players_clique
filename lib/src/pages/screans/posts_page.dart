@@ -96,7 +96,7 @@ class _Posts_Page extends State<Posts_Page> with AutomaticKeepAliveClientMixin {
                           Icon(Icons.error_outline,
                               size: 48, color: Colors.red.shade300),
                           const SizedBox(height: 12),
-                          Text(
+                          SelectableText(
                             'Ошибка загрузки постов:\n$_error',
                             textAlign: TextAlign.center,
                             style: TextStyle(
