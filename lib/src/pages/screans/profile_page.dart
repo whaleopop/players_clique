@@ -37,7 +37,8 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
   late Future<String?> _fioFuture;
   late Future<String?> _photoFuture;
   late Future<int> _friendsCountFuture;
-  late Future<List<DocumentSnapshot>> _postsFuture;
+  late Stream<QuerySnapshot> _postsStream;
+  String? _currentUid;
 
   @override
   void initState() {
@@ -45,7 +46,16 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     _fioFuture = loadUserField("fio");
     _photoFuture = loadUserField("photourl");
     _friendsCountFuture = _fetchFriendsCount();
-    _postsFuture = _fetchPosts();
+    final authService = Provider.of<AuthService>(context, listen: false);
+    _currentUid = authService.getCurrentUserUid();
+    _postsStream = _currentUid != null
+        ? FirebaseFirestore.instance
+            .collection('posts')
+            .doc(_currentUid)
+            .collection('post')
+            .orderBy('timestamp', descending: true)
+            .snapshots()
+        : const Stream.empty();
   }
 
   Future<int> _fetchFriendsCount() async {
@@ -208,130 +218,174 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     }
   }
 
-  Widget _buildRequestListItem(DocumentSnapshot document) {
-    Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
-    print(data);
-    // Проверяем, содержит ли документ адрес электронной почты
-    if (data['imageUrl'] != "") {
-      print(data['imageUrl']);
-      // Создаем виджет ListTile с изображением и информацией о пользователе
-      return ImagePost(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                title: Row(
-                  children: [
-                    Expanded(
-                      child: Text(data['namePost']),
-                    ),
-                    PopupMenuButton<String>(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      color: Colors.lightBlue, // Пример цвета
-                      itemBuilder: (BuildContext context) =>
-                          <PopupMenuEntry<String>>[
-                        PopupMenuItem<String>(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.delete,
-                                  color: Colors.white,
-                                ),
-                                Text(
-                                  "Удалить",
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ],
-                            )),
-                        PopupMenuItem<String>(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.edit,
-                                color: Colors.white,
-                              ),
-                              Text(
-                                "Удалить",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onSelected: (String value) {
-                        // Обработка выбора пользователя
-                      },
-                    )
-                  ],
+  Widget _buildPostTile(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final imageUrl = data['imageUrl'] as String? ?? '';
+    if (imageUrl.isEmpty) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () => _showPostDetail(doc),
+      child: ImagePost(imageUrl: imageUrl, onTap: () => _showPostDetail(doc)),
+    );
+  }
+
+  void _showPostDetail(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.network(
+                data['imageUrl'] ?? '',
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox(
+                  height: 120,
+                  child: Center(child: Icon(Icons.broken_image_outlined, size: 48, color: Colors.grey)),
                 ),
-                content: SingleChildScrollView(
-                    child: ListBody(children: <Widget>[
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    // чтобы содержимое не занимало слишком много места
-                    children: <Widget>[
-                      Image.network(
-                        data['imageUrl'],
-                        errorBuilder: (context, error, stackTrace) => const Icon(
-                          Icons.broken_image_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      data['namePost'] ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ),
+                  // Меню
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    onSelected: (value) {
+                      Navigator.of(context).pop();
+                      if (value == 'edit') _openEditDialog(doc);
+                      if (value == 'delete') _confirmDelete(doc);
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(children: [
+                          Icon(Icons.edit_outlined, size: 20),
+                          SizedBox(width: 8),
+                          Text('Редактировать'),
+                        ]),
                       ),
-                      SizedBox(height: 10),
-                      // Добавляем небольшой отступ
-                      Text(data['descPost']),
-                      // Здесь ваш длинный текст
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(children: [
+                          Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Удалить', style: TextStyle(color: Colors.red)),
+                        ]),
+                      ),
                     ],
                   ),
-                ])),
-                actions: <Widget>[
-                  Container(
-                    width: double.infinity, // Занимает всю доступную ширину
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      // Распределение кнопок по ширине
-                      children: [
-                        IconButton(
-                          color: Colors.lightBlue,
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          icon: Icon(PlayerIcon
-                              .arrow_back_fill), // Используйте Icon из Material Icons, если PlayerIcon не доступен
-                        ),
-                        IconButton(
-                          color: Colors.lightBlue,
-                          onPressed: () {},
-                          icon: Icon(PlayerIcon
-                              .favorite), // Используйте Icon из Material Icons, если PlayerIcon не доступен
-                        ),
-                        IconButton(
-                          color: Colors.lightBlue,
-                          onPressed: () {},
-                          icon: Icon(PlayerIcon
-                              .chat_fill), // Используйте Icon из Material Icons, если PlayerIcon не доступен
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
-              );
+              ),
+            ),
+            if ((data['descPost'] as String? ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                child: Text(data['descPost'], style: const TextStyle(fontSize: 14)),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openEditDialog(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final nameCtrl = TextEditingController(text: data['namePost'] ?? '');
+    final descCtrl = TextEditingController(text: data['descPost'] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Редактировать пост'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: 'Название'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: descCtrl,
+              decoration: const InputDecoration(labelText: 'Описание'),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0071BC)),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              if (_currentUid == null) return;
+              await FirebaseFirestore.instance
+                  .collection('posts')
+                  .doc(_currentUid)
+                  .collection('post')
+                  .doc(doc.id)
+                  .update({
+                'namePost': nameCtrl.text.trim(),
+                'descPost': descCtrl.text.trim(),
+              });
             },
-          );
-        },
-        imageUrl: data['imageUrl'],
-      );
-    } else {
-      // Если адрес электронной почты отсутствует, возвращаем пустой Container
-      return Container();
-    }
+            child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(DocumentSnapshot doc) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Удалить пост?'),
+        content: const Text('Это действие нельзя отменить.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              if (_currentUid == null) return;
+              await FirebaseFirestore.instance
+                  .collection('posts')
+                  .doc(_currentUid)
+                  .collection('post')
+                  .doc(doc.id)
+                  .delete();
+            },
+            child: const Text('Удалить', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -426,10 +480,10 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        FutureBuilder<List<DocumentSnapshot>>(
-                          future: _postsFuture,
+                        StreamBuilder<QuerySnapshot>(
+                          stream: _postsStream,
                           builder: (context, snapshot) =>
-                              _statItem('${snapshot.data?.length ?? 0}', 'Посты'),
+                              _statItem('${snapshot.data?.docs.length ?? 0}', 'Посты'),
                         ),
                         Container(width: 1, height: 36, color: Colors.grey.shade300),
                         FutureBuilder<int>(
@@ -476,8 +530,8 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
             // Разделитель
             const SliverToBoxAdapter(child: SizedBox(height: 8)),
             // Сетка постов
-            FutureBuilder<List<DocumentSnapshot>>(
-              future: _postsFuture,
+            StreamBuilder<QuerySnapshot>(
+              stream: _postsStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SliverToBoxAdapter(
@@ -487,7 +541,8 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                     ),
                   );
                 }
-                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                final docs = snapshot.data?.docs ?? [];
+                if (docs.isEmpty) {
                   return const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.all(32),
@@ -497,8 +552,8 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                 }
                 return SliverGrid(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => _buildRequestListItem(snapshot.data![index]),
-                    childCount: snapshot.data!.length,
+                    (context, index) => _buildPostTile(docs[index]),
+                    childCount: docs.length,
                   ),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
@@ -547,32 +602,5 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     );
   }
 
-  Future<List<DocumentSnapshot>> _fetchPosts() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    String? uid = authService.getCurrentUserUid();
-    if (uid != null) {
-      // Проверяем, кэшированы ли уже документы
-      if (cacheService.isCached(uid)) {
-        // Если кэшированы, возвращаем их
-        return [cacheService.getFromCache(uid)!];
-      } else {
-        try {
-          QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-              .collection('posts')
-              .doc(uid)
-              .collection("post")
-              .get();
-          // Добавляем документы в кэш
-          for (final doc in querySnapshot.docs) {
-            cacheService.addToCache(doc.id, doc);
-          }
-          return querySnapshot.docs;
-        } catch (e) {
-          return [];
-        }
-      }
-    } else {
-      return [];
-    }
-  }
 }
+

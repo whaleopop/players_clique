@@ -1,15 +1,14 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path/path.dart';
-import 'package:image/image.dart' as img; // Import the image package
+import 'package:image/image.dart' as img;
 
 import '../../../models/post.dart';
 import '../../../services/post/post_service.dart';
@@ -17,202 +16,281 @@ import '../../../services/post/post_service.dart';
 class Add_Post_Page extends StatefulWidget {
   final PostService postService;
 
-  Add_Post_Page({Key? key, required this.postService}) : super(key: key);
+  const Add_Post_Page({Key? key, required this.postService}) : super(key: key);
 
   @override
-  _Add_Post_Page createState() => _Add_Post_Page();
+  State<Add_Post_Page> createState() => _AddPostPageState();
 }
 
-class _Add_Post_Page extends State<Add_Post_Page> {
-  final TextEditingController _postContentController = TextEditingController();
-  final TextEditingController _postDescriptionController = TextEditingController();
-  File? _selectedFile; // This will be used to store the file for both Android and web
-  Uint8List? _selectedFileBytes;
+class _AddPostPageState extends State<Add_Post_Page> {
+  final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _descCtrl = TextEditingController();
 
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'png', 'pdf', 'doc'],
-    );
-    img.Image cropToSquare(img.Image image) {
-      int size = min(image.width, image.height);
-      int x = (image.width - size) ~/ 2;
-      int y = (image.height - size) ~/ 2;
-      return img.copyCrop(image, x, y, size, size);
-    }
-    img.Image resizeToSquare(img.Image image, {int size = 1080}) {
-      int newWidth = size;
-      int newHeight = size;
-      img.Image resized = img.copyResize(image, width: newWidth, height: newHeight);
-      return resized;
-    }
-    if (result != null) {
-      setState(() {
-        if (kIsWeb) {
-          // On web, use the bytes property
-          _selectedFileBytes = result.files.single.bytes;
-          // Convert bytes to image
-          img.Image? image = img.decodeImage(_selectedFileBytes!);
-          // Crop or resize the image
-          img.Image processedImage = cropToSquare(image!); // or resizeToSquare(image)
-          // Convert processed image back to bytes
-          _selectedFileBytes = img.encodeJpg(processedImage) as Uint8List?;
-        } else {
-          // On Android, use the path property
-          _selectedFile = File(result.files.single.path!);
-          // Convert file to image
-          img.Image? image = img.decodeImage(_selectedFile!.readAsBytesSync());
-          // Crop or resize the image
-          img.Image processedImage = cropToSquare(image!); // or resizeToSquare(image)
-          // Convert processed image back to file
-          _selectedFile!.writeAsBytesSync(img.encodeJpg(processedImage));
-        }
-      });
-    }
+  File? _selectedFile;
+  Uint8List? _selectedFileBytes;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
   }
 
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+    );
+    if (result == null) return;
+
+    img.Image cropToSquare(img.Image image) {
+      final size = min(image.width, image.height);
+      final x = (image.width - size) ~/ 2;
+      final y = (image.height - size) ~/ 2;
+      return img.copyCrop(image, x, y, size, size);
+    }
+
+    setState(() {
+      if (kIsWeb) {
+        _selectedFileBytes = result.files.single.bytes;
+        final image = img.decodeImage(_selectedFileBytes!);
+        if (image != null) {
+          _selectedFileBytes = Uint8List.fromList(
+              img.encodeJpg(cropToSquare(image)));
+        }
+      } else {
+        _selectedFile = File(result.files.single.path!);
+        final image = img.decodeImage(_selectedFile!.readAsBytesSync());
+        if (image != null) {
+          _selectedFile!.writeAsBytesSync(img.encodeJpg(cropToSquare(image)));
+        }
+      }
+    });
+  }
 
   Future<String> _uploadFile(dynamic data, String fileName) async {
-    Reference ref = FirebaseStorage.instance.ref().child('posts/$fileName');
+    final ref = FirebaseStorage.instance.ref().child('posts/$fileName');
     UploadTask uploadTask;
-
     if (data is Uint8List) {
       uploadTask = ref.putData(data);
     } else if (data is File) {
       uploadTask = ref.putFile(data);
     } else {
-      throw Exception('Unsupported data type for upload');
+      throw Exception('Unsupported data type');
     }
-
-    TaskSnapshot snapshot = await uploadTask;
-    String downloadUrl = await snapshot.ref.getDownloadURL();
-    return downloadUrl;
+    final snapshot = await uploadTask;
+    return snapshot.ref.getDownloadURL();
   }
 
-
   Future<void> _createPost() async {
-    String content = _postContentController.text;
-    String description = _postDescriptionController.text;
-    String? imageUrl;
-
-    if (_selectedFileBytes != null) {
-      // Generate a temporary file name
-      String tempFileName = 'temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      try {
-        imageUrl = await _uploadFile(_selectedFileBytes!, tempFileName);
-      } catch (e) {
-        print("Error uploading file: $e");
-        // Handle the error, e.g., show a dialog to the user
-        return;
-      }
+    if (_selectedFileBytes == null && _selectedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Выберите изображение')),
+      );
+      return;
+    }
+    if (_nameCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите название поста')),
+      );
+      return;
     }
 
-    if (_selectedFile != null) {
-      // Generate a temporary file name for Android
-      String tempFileName = 'temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      try {
-        imageUrl = await _uploadFile(_selectedFile!, tempFileName);
-      } catch (e) {
-        print("Error uploading file: $e");
-        // Handle the error, e.g., show a dialog to the user
-        return;
-      }
-    }
-
+    setState(() => _isLoading = true);
     try {
-      if (imageUrl != null) {
-        Post post = Post(
-          userId: FirebaseAuth.instance.currentUser!.uid,
-          namePost: content,
-          descPost: description,
-          imageUrl: imageUrl,
-          timestamp: Timestamp.now(),
+      final fileName = 'post_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final imageUrl = await _uploadFile(
+        kIsWeb ? _selectedFileBytes! : _selectedFile!,
+        fileName,
+      );
+
+      final post = Post(
+        userId: FirebaseAuth.instance.currentUser!.uid,
+        namePost: _nameCtrl.text.trim(),
+        descPost: _descCtrl.text.trim(),
+        imageUrl: imageUrl,
+        timestamp: Timestamp.now(),
+      );
+      await widget.postService.createPost(post);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Пост опубликован!')),
         );
-        await widget.postService.createPost(post);
-      } else {
-        // Handle the case where no image URL is available
-        // For example, show an error message or prompt the user to select an image
       }
-      // Optionally, clear the form or show a success message
     } catch (e) {
-      print("Error creating post: $e");
-      // Handle the error, e.g., show a dialog to the user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = _selectedFileBytes != null || _selectedFile != null;
+
     return Scaffold(
-      appBar: CupertinoNavigationBar(
-        middle: Text('Создание нового поста'),
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Color(0xFF0071BC)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Новый пост',
+          style: TextStyle(
+              color: Color(0xFF1A1A2E),
+              fontWeight: FontWeight.bold,
+              fontSize: 17),
+        ),
+        centerTitle: true,
+        actions: [
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(14),
+              child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            TextButton(
+              onPressed: _createPost,
+              child: const Text(
+                'Опубликовать',
+                style: TextStyle(
+                    color: Color(0xFF0071BC), fontWeight: FontWeight.bold),
+              ),
+            ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                    ),
-                    child: _selectedFileBytes == null && _selectedFile == null
-                        ? Icon(Icons.image, size: 100)
-                        : kIsWeb
-                        ? Image.memory(
-                      _selectedFileBytes!,
-                      fit: BoxFit.cover,
-                    )
-                        : Image.file(
-                      _selectedFile!,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: FloatingActionButton(
-                      onPressed: _pickFile,
-                      tooltip: 'Pick File',
-                      child: Icon(Icons.add_a_photo),
-                    ),
-                  ),
-                ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Image picker
+            GestureDetector(
+              onTap: _isLoading ? null : _pickFile,
+              child: Container(
+                height: 260,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: hasImage
+                          ? Colors.transparent
+                          : Colors.grey.shade300),
+                  boxShadow: [
+                    if (hasImage)
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: hasImage
+                    ? Stack(fit: StackFit.expand, children: [
+                        kIsWeb
+                            ? Image.memory(_selectedFileBytes!,
+                                fit: BoxFit.cover)
+                            : Image.file(_selectedFile!, fit: BoxFit.cover),
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            child: const Icon(Icons.edit,
+                                color: Colors.white, size: 18),
+                          ),
+                        ),
+                      ])
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              size: 56, color: Colors.grey.shade400),
+                          const SizedBox(height: 8),
+                          Text('Нажмите чтобы выбрать фото',
+                              style: TextStyle(color: Colors.grey.shade500)),
+                        ],
+                      ),
               ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _postContentController,
-                decoration: InputDecoration(
-                  hintText: 'Введите текст поста',
+            ),
+            const SizedBox(height: 16),
+            // Name field
+            TextField(
+              controller: _nameCtrl,
+              decoration: InputDecoration(
+                labelText: 'Название',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
               ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _postDescriptionController,
-                decoration: InputDecoration(
-                  hintText: 'Введите описание поста',
+            ),
+            const SizedBox(height: 12),
+            // Desc field
+            TextField(
+              controller: _descCtrl,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: 'Описание',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
               ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _createPost,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
-                  child: Text(
-                    'Создать пост',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _createPost,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0071BC),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-            ],
-          ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Text('Опубликовать',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       ),
     );
   }
-
 }
