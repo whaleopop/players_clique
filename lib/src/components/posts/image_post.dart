@@ -16,12 +16,19 @@ class ImagePost extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        child: Image.network(imageUrl),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(
-            color: Colors.grey, // Цвет обводки
-            width: 1.0, // Толщина обводки
+            color: Colors.grey,
+            width: 1.0,
+          ),
+        ),
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            color: Colors.grey.shade200,
+            child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
           ),
         ),
       ),

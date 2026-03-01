@@ -31,6 +31,20 @@ class _Profile_Page extends State<Profile_Page> {
       []; // State variable for filtered users
   final CacheService cacheService = CacheService();
 
+  late Future<String?> _fioFuture;
+  late Future<String?> _photoFuture;
+  late Future<List<String>> _playersFuture;
+  late Future<List<DocumentSnapshot>> _postsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _fioFuture = loadUserField("fio");
+    _photoFuture = loadUserField("photourl");
+    _playersFuture = loadUserFieldList("players");
+    _postsFuture = _fetchPosts();
+  }
+
   Future<File> cropImageToCircle(File file) async {
     // Загрузка изображения
     img.Image? image = img.decodeImage(await file.readAsBytes());
@@ -246,8 +260,14 @@ class _Profile_Page extends State<Profile_Page> {
                     mainAxisSize: MainAxisSize.min,
                     // чтобы содержимое не занимало слишком много места
                     children: <Widget>[
-                      Image.network(data['imageUrl']),
-                      // Замените URL_КАРТИНКИ на URL вашей картинки
+                      Image.network(
+                        data['imageUrl'],
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.broken_image_outlined,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                      ),
                       SizedBox(height: 10),
                       // Добавляем небольшой отступ
                       Text(data['descPost']),
@@ -333,7 +353,7 @@ class _Profile_Page extends State<Profile_Page> {
                         children: [
                           // Имя
                           FutureBuilder(
-                            future: loadUserField("fio"),
+                            future: _fioFuture,
                             builder: (context, AsyncSnapshot<String?> snapshot) {
                               final name = snapshot.data ?? '';
                               return Text(
@@ -354,7 +374,7 @@ class _Profile_Page extends State<Profile_Page> {
                               _statItem('0', 'Посты'),
                               Container(width: 1, height: 36, color: Colors.grey.shade300),
                               FutureBuilder(
-                                future: loadUserFieldList("players"),
+                                future: _playersFuture,
                                 builder: (context, AsyncSnapshot<List<String>> snapshot) {
                                   final count = snapshot.data?.length ?? 0;
                                   return _statItem('$count', 'Игроки');
@@ -410,10 +430,17 @@ class _Profile_Page extends State<Profile_Page> {
                             child: SizedBox.fromSize(
                               size: const Size.fromRadius(50),
                               child: FutureBuilder(
-                                future: loadUserField("photourl"),
+                                future: _photoFuture,
                                 builder: (context, AsyncSnapshot<String?> snapshot) {
                                   if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                                    return Image.network(snapshot.data!, fit: BoxFit.cover);
+                                    return Image.network(
+                                      snapshot.data!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        color: Colors.lightBlue.shade100,
+                                        child: const Icon(Icons.person, size: 50, color: Colors.white),
+                                      ),
+                                    );
                                   }
                                   return Container(
                                     color: Colors.lightBlue.shade100,
@@ -451,7 +478,7 @@ class _Profile_Page extends State<Profile_Page> {
             const SliverToBoxAdapter(child: SizedBox(height: 8)),
             // Сетка постов
             FutureBuilder<List<DocumentSnapshot>>(
-              future: _fetchPosts(),
+              future: _postsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SliverToBoxAdapter(
