@@ -411,16 +411,17 @@ class _Profile_Page extends State<Profile_Page> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _statItem('0', 'Посты'),
+                        FutureBuilder<List<DocumentSnapshot>>(
+                          future: _postsFuture,
+                          builder: (context, snapshot) =>
+                              _statItem('${snapshot.data?.length ?? 0}', 'Посты'),
+                        ),
                         Container(width: 1, height: 36, color: Colors.grey.shade300),
                         FutureBuilder(
                           future: _playersFuture,
-                          builder: (context, AsyncSnapshot<List<String>> snapshot) {
-                            return _statItem('${snapshot.data?.length ?? 0}', 'Друзья');
-                          },
+                          builder: (context, AsyncSnapshot<List<String>> snapshot) =>
+                              _statItem('${snapshot.data?.length ?? 0}', 'Друзья'),
                         ),
-                        Container(width: 1, height: 36, color: Colors.grey.shade300),
-                        _statItem('0', 'Саппорты'),
                       ],
                     ),
                     const SizedBox(height: 16),

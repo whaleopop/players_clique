@@ -73,20 +73,29 @@ class _Message_Page extends State<Message_Page> {
     );
   }
 
-  // --- Recent chats: chat_rooms where user is participant + have messages ---
+  // --- Recent chats: все chat_rooms где участвует юзер ---
   Widget _buildRecentChats(String currentUid) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('chat_rooms')
           .where('participants', arrayContains: currentUid)
-          .where('lastMessageTime', isNotEqualTo: null)
-          .orderBy('lastMessageTime', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        final docs = snapshot.data?.docs ?? [];
+        final docs = List.of(snapshot.data?.docs ?? []);
+        // Сортируем по lastMessageTime (новые сверху), старые чаты без поля — в конец
+        docs.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTime = aData['lastMessageTime'] as Timestamp?;
+          final bTime = bData['lastMessageTime'] as Timestamp?;
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          return bTime.compareTo(aTime);
+        });
         if (docs.isEmpty) {
           return Center(
             child: Column(
