@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -58,13 +57,6 @@ class _Posts_Page extends State<Posts_Page> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: CupertinoNavigationBar(
-          backgroundColor: Color(0xFF0071BC),
-          middle: Text(
-            'Лента',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
         body: FutureBuilder<List<DocumentSnapshot>>(
           future: _fetchPosts(friendUids),
           builder: (BuildContext context,

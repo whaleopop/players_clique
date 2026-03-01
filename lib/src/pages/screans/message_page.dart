@@ -1,17 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:players_clique/src/components/my_text_field.dart';
-import 'package:players_clique/src/pages/screans/profile_sub_screen/add_friend.dart';
-import 'package:provider/provider.dart';
+import 'package:players_clique/src/services/chat/chat_service.dart';
 
 import '../../components/messages/message_user.dart';
-import '../../icons/player_icon_icons.dart';
-import '../../services/auth/auth_service.dart';
-import '../../services/cache/cache.dart';
-import '../../services/chat/chat_service.dart';
 import 'chat/chat_page.dart';
 
 class Message_Page extends StatefulWidget {
@@ -21,133 +13,113 @@ class Message_Page extends StatefulWidget {
 
 class _Message_Page extends State<Message_Page> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final searchFriends = TextEditingController();
-  List<DocumentSnapshot> filteredUsers =
-      []; // State variable for filtered users
-  List<DocumentSnapshot> filteredUsersReUid =
-      []; // State variable for filtered users
-  final cacheService = CacheService();
-
-  Future<List<String>> loadUserField(String fieldName) async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    String? uid = authService.getCurrentUserUid();
-    if (uid != null) {
-      return await authService.getUserList(uid, fieldName);
-    } else {
-      return [];
-    }
-  }
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text.trim().toLowerCase());
+    });
+  }
 
-    _filterUsersUid(); // Call this method in initState
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: CupertinoNavigationBar(
-          backgroundColor: Color(0xFF0071BC),
-          trailing: IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                CupertinoPageRoute(builder: (context) => Add_Friends_Page()),
-              );
-            },
-            icon: Icon(
-              PlayerIcon.person_add_alt,
-              color: Colors.white,
-            ),
-          ),
-          middle: Text(
-            'Сообшения',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
+        backgroundColor: const Color(0xFFF0F4F8),
         body: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Найти пользователя...',
+                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
             Expanded(
-              child: _buildReUserList(),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('users').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('Нет пользователей'));
+                  }
+
+                  final currentUid = _auth.currentUser!.uid;
+                  final docs = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    if (data['uid'] == currentUid) return false;
+                    if (_searchQuery.isEmpty) return true;
+                    final fio = (data['fio'] as String? ?? '').toLowerCase();
+                    return fio.contains(_searchQuery);
+                  }).toList();
+
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'Никого не найдено',
+                        style: TextStyle(color: Colors.grey.shade400),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final data = docs[index].data() as Map<String, dynamic>;
+                      final uid = data['uid'] as String? ?? docs[index].id;
+                      final photoUrl = data['photourl'] as String? ?? '';
+                      final fio = data['fio'] as String? ?? '';
+
+                      return MessageProfile(
+                        iconProfile: photoUrl.isNotEmpty
+                            ? NetworkImage(photoUrl)
+                            : const AssetImage('assets/image/sportman1.png') as ImageProvider,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatPage(
+                                receiveruserEmail: fio,
+                                receiverUserID: uid,
+                              ),
+                            ),
+                          );
+                        },
+                        text: fio,
+                        senderId: uid,
+                        receiverId: currentUid,
+                        chatService: ChatService(),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  void _filterUsersUid() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    String? uid = authService.getCurrentUserUid();
-    if (uid != null) {
-      try {
-        DocumentSnapshot userDoc =
-            await FirebaseFirestore.instance.collection('users').doc(uid).get();
-        List<dynamic> requestRefs = userDoc.get('players');
-        List<DocumentSnapshot> requestUsers = [];
-
-        for (var userId in requestRefs) {
-          if (userId is String) {
-
-
-            DocumentSnapshot docSnapshot = await FirebaseFirestore.instance
-                .collection('users')
-                .doc(userId)
-                .get();
-            requestUsers.add(docSnapshot);
-          } else {
-            print("Unexpected type for user ID: $userId");
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            filteredUsersReUid = requestUsers; // Update state here
-          });
-        }
-      } catch (e) {
-        print("Error fetching user documents: $e");
-      }
-    }
-  }
-
-  Widget _buildReUserList() {
-    // Use the filteredUsers list instead of the stream
-    return ListView(
-      children: filteredUsersReUid
-          .map<Widget>((user) => _buildRequestListItem(user))
-          .toList(),
-    );
-  }
-
-  Widget _buildRequestListItem(DocumentSnapshot document) {
-    Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
-    final authService = Provider.of<AuthService>(context, listen: false);
-    String? uid = authService.getCurrentUserUid();
-    if (_auth.currentUser!.email != data['email']) {
-      return MessageProfile(
-        iconProfile: NetworkImage(data['photourl']),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatPage(
-                receiveruserEmail: data['fio'],
-                receiverUserID: data['uid'],
-              ),
-            ),
-          );
-        },
-        text: data['fio'],
-        senderId: data['uid'],
-        receiverId: uid ?? '',
-        chatService: ChatService(),
-      );
-    } else {
-      return const SizedBox.shrink();
-    }
   }
 }
