@@ -70,7 +70,7 @@ class _MyHomePage extends State<MyHomePage> {
       ),
       body: PageView(
         controller: _pageController,
-        physics: const ClampingScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         onPageChanged: (index) => setState(() => _selectedIndex = index),
         children: <Widget>[
           Posts_Page(),
