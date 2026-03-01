@@ -36,7 +36,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
 
   late Future<String?> _fioFuture;
   late Future<String?> _photoFuture;
-  late Future<int> _friendsCountFuture;
+  late Stream<DocumentSnapshot> _userStream;
   late Stream<QuerySnapshot> _postsStream;
   String? _currentUid;
 
@@ -45,9 +45,14 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     super.initState();
     _fioFuture = loadUserField("fio");
     _photoFuture = loadUserField("photourl");
-    _friendsCountFuture = _fetchFriendsCount();
     final authService = Provider.of<AuthService>(context, listen: false);
     _currentUid = authService.getCurrentUserUid();
+    _userStream = _currentUid != null
+        ? FirebaseFirestore.instance
+            .collection('users')
+            .doc(_currentUid)
+            .snapshots()
+        : const Stream.empty();
     _postsStream = _currentUid != null
         ? FirebaseFirestore.instance
             .collection('posts')
@@ -56,19 +61,6 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
             .orderBy('timestamp', descending: true)
             .snapshots()
         : const Stream.empty();
-  }
-
-  Future<int> _fetchFriendsCount() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final uid = authService.getCurrentUserUid();
-    if (uid == null) return 0;
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-    final data = doc.data() ?? {};
-    final friends = data['friends'] as List<dynamic>? ?? [];
-    return friends.length;
   }
 
   Future<File> cropImageToCircle(File file) async {
@@ -486,10 +478,13 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                               _statItem('${snapshot.data?.docs.length ?? 0}', 'Посты'),
                         ),
                         Container(width: 1, height: 36, color: Colors.grey.shade300),
-                        FutureBuilder<int>(
-                          future: _friendsCountFuture,
-                          builder: (context, snapshot) =>
-                              _statItem('${snapshot.data ?? 0}', 'Друзья'),
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: _userStream,
+                          builder: (context, snapshot) {
+                            final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+                            final count = (data['friends'] as List<dynamic>? ?? []).length;
+                            return _statItem('$count', 'Друзья');
+                          },
                         ),
                       ],
                     ),
