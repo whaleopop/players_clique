@@ -2,11 +2,9 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:players_clique/src/icons/player_icon_icons.dart';
 
-import 'package:players_clique/src/pages/screans/map_page.dart';
 import 'package:players_clique/src/pages/screans/message_page.dart';
 import 'package:players_clique/src/pages/screans/posts_page.dart';
 import 'package:players_clique/src/pages/screans/profile_page.dart';
-import 'package:players_clique/src/pages/screans/search_page.dart';
 
 class MyHomePage extends StatefulWidget {
   @override
@@ -14,13 +12,13 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePage extends State<MyHomePage> {
-  int _selectedIndex = 2;
+  int _selectedIndex = 1;
   PageController _pageController = PageController();
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 2); // Set the initial page to 2 for the third tab
+    _pageController = PageController(initialPage: 1);
     _pageController.addListener(() {
       setState(() {
         _selectedIndex = _pageController.page!.round();
@@ -54,9 +52,7 @@ class _MyHomePage extends State<MyHomePage> {
         },
         items: const [
           Icon(PlayerIcon.play_arrow_fill, color: Colors.white, size: 22),
-          Icon(PlayerIcon.search, color: Colors.white, size: 22),
           Icon(PlayerIcon.settings_accessibility_fill, color: Colors.white, size: 26),
-          Icon(PlayerIcon.place_black, color: Colors.white, size: 22),
           Icon(PlayerIcon.chat_fill, color: Colors.white, size: 22),
         ],
       ),
@@ -69,9 +65,7 @@ class _MyHomePage extends State<MyHomePage> {
         },
         children: <Widget>[
           Posts_Page(),
-          Search_Page(),
           Profile_Page(),
-          Map_Page(),
           Message_Page(),
         ],
       ),
