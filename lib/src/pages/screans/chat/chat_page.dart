@@ -136,10 +136,10 @@ class _ChatPage extends State<ChatPage> {
                 ElevatedButton(
                   onPressed: sendMessage,
                   style: ElevatedButton.styleFrom(
-                    shape: CircleBorder(),
-                    primary: Colors.blue,
+                    shape: const CircleBorder(),
+                    backgroundColor: const Color(0xFF0071BC),
                   ),
-                  child: Icon(Icons.arrow_upward, color: Colors.white),
+                  child: const Icon(Icons.arrow_upward, color: Colors.white),
                 ),
               ],
             )

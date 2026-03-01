@@ -30,41 +30,10 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="favicon.png"/>
 
-    <title>players_clique</title>
+    <title>Players Clique</title>
     <link rel="manifest" href="manifest.json">
-    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-storage.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
-    <script src="https://unpkg.com/sharedpreferences"></script>
-    <script>
-    // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = null;
-
-    </script>
-    <script type="text/javascript">
-    window.flutterWebRenderer = "html";
-
-    </script>
-    <!-- This script adds the flutter initialization JS code -->
-    <script src="flutter.js" defer></script>
+    <script src="flutter_bootstrap.js" async></script>
 </head>
 <body>
-<script>
-    window.addEventListener('load', function(ev) {
-      // Download main.dart.js
-      _flutter.loader.loadEntrypoint({
-        serviceWorker: {
-          serviceWorkerVersion: serviceWorkerVersion,
-        },
-        onEntrypointLoaded: function(engineInitializer) {
-          engineInitializer.initializeEngine().then(function(appRunner) {
-            appRunner.runApp();
-          });
-        }
-      });
-    });
-
-</script>
 </body>
 </html>
