@@ -327,166 +327,134 @@ class _Profile_Page extends State<Profile_Page> {
         backgroundColor: const Color(0xFFF5F7FA),
         body: CustomScrollView(
           slivers: [
-            // Шапка профиля
+            // Профиль: аватар + инфо
             SliverToBoxAdapter(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Синий баннер
-                  Container(
-                    height: 140,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF0071BC), Color(0xFF29ABE2)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-                  // Кнопка обновления (для iOS PWA)
-                  if (kIsWeb)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Tooltip(
-                        message: 'Обновить приложение',
-                        child: IconButton(
-                          onPressed: reloadAndUpdate,
-                          icon: const Icon(Icons.system_update_alt, color: Colors.white70, size: 22),
+              child: Container(
+                color: const Color(0xFFF5F7FA),
+                padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
+                child: Column(
+                  children: [
+                    // Аватар
+                    Stack(
+                      children: [
+                        FutureBuilder(
+                          future: _photoFuture,
+                          builder: (context, AsyncSnapshot<String?> snapshot) {
+                            final url = snapshot.data ?? '';
+                            return CircleAvatar(
+                              radius: 60,
+                              backgroundColor: Colors.lightBlue.shade100,
+                              backgroundImage: url.isNotEmpty ? NetworkImage(url) : null,
+                              child: url.isEmpty
+                                  ? const Icon(Icons.person, size: 60, color: Colors.white)
+                                  : null,
+                            );
+                          },
                         ),
-                      ),
-                    ),
-                  // Белая карточка профиля
-                  Padding(
-                    padding: const EdgeInsets.only(top: 90),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF5F7FA),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
-                      child: Column(
-                        children: [
-                          // Имя
-                          FutureBuilder(
-                            future: _fioFuture,
-                            builder: (context, AsyncSnapshot<String?> snapshot) {
-                              final name = snapshot.data ?? '';
-                              return Text(
-                                name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 20,
-                                  letterSpacing: 0.5,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          // Статистика
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _statItem('0', 'Посты'),
-                              Container(width: 1, height: 36, color: Colors.grey.shade300),
-                              FutureBuilder(
-                                future: _playersFuture,
-                                builder: (context, AsyncSnapshot<List<String>> snapshot) {
-                                  final count = snapshot.data?.length ?? 0;
-                                  return _statItem('$count', 'Игроки');
-                                },
+                        Positioned(
+                          bottom: 2,
+                          right: 2,
+                          child: GestureDetector(
+                            onTap: _pickFile,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0071BC),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
                               ),
-                              Container(width: 1, height: 36, color: Colors.grey.shade300),
-                              _statItem('0', 'Саппорты'),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          // Кнопки Edit / Share
-                          Row(
-                            children: [
-                              Expanded(
-                                child: BlueButton(onTap: () {}, text: 'Редактировать', width: double.infinity),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: BlueButton(onTap: () {}, text: 'Поделиться', width: double.infinity),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          // Иконки выход / добавить пост
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _iconBtn(icon: PlayerIcon.logout_fill, onTap: signOut),
-                              _iconBtn(
-                                icon: PlayerIcon.post_add,
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => Add_Post_Page(postService: PostService()),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Аватар
-                  Positioned(
-                    top: 88,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Stack(
-                        children: [
-                          ClipOval(
-                            child: SizedBox.fromSize(
-                              size: const Size.fromRadius(50),
-                              child: FutureBuilder(
-                                future: _photoFuture,
-                                builder: (context, AsyncSnapshot<String?> snapshot) {
-                                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                                    return Image.network(
-                                      snapshot.data!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => Container(
-                                        color: Colors.lightBlue.shade100,
-                                        child: const Icon(Icons.person, size: 50, color: Colors.white),
-                                      ),
-                                    );
-                                  }
-                                  return Container(
-                                    color: Colors.lightBlue.shade100,
-                                    child: const Icon(Icons.person, size: 50, color: Colors.white),
-                                  );
-                                },
-                              ),
+                              child: const Icon(Icons.add_a_photo, color: Colors.white, size: 15),
                             ),
                           ),
+                        ),
+                        if (kIsWeb)
                           Positioned(
-                            bottom: 0,
+                            top: 0,
                             right: 0,
-                            child: GestureDetector(
-                              onTap: _pickFile,
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0071BC),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
+                            child: Tooltip(
+                              message: 'Обновить приложение',
+                              child: GestureDetector(
+                                onTap: reloadAndUpdate,
+                                child: Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.system_update_alt,
+                                      size: 16, color: Colors.grey.shade600),
                                 ),
-                                child: const Icon(Icons.add_a_photo, color: Colors.white, size: 14),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 14),
+                    // Имя
+                    FutureBuilder(
+                      future: _fioFuture,
+                      builder: (context, AsyncSnapshot<String?> snapshot) {
+                        return Text(
+                          snapshot.data ?? '',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            letterSpacing: 0.3,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    // Статистика
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _statItem('0', 'Посты'),
+                        Container(width: 1, height: 36, color: Colors.grey.shade300),
+                        FutureBuilder(
+                          future: _playersFuture,
+                          builder: (context, AsyncSnapshot<List<String>> snapshot) {
+                            return _statItem('${snapshot.data?.length ?? 0}', 'Друзья');
+                          },
+                        ),
+                        Container(width: 1, height: 36, color: Colors.grey.shade300),
+                        _statItem('0', 'Саппорты'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Кнопки Edit / Share
+                    Row(
+                      children: [
+                        Expanded(
+                          child: BlueButton(onTap: () {}, text: 'Редактировать', width: double.infinity),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: BlueButton(onTap: () {}, text: 'Поделиться', width: double.infinity),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Иконки выход / добавить пост
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _iconBtn(icon: PlayerIcon.logout_fill, onTap: signOut),
+                        _iconBtn(
+                          icon: PlayerIcon.post_add,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => Add_Post_Page(postService: PostService()),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             // Разделитель
