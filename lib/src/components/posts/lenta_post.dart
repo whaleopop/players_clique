@@ -54,30 +54,26 @@ class LentaPost extends StatelessWidget {
               child: Row(
                 children: [
                   ClipOval(
-                    child: FutureBuilder(
-                      future: loadUserField(context, "photourl"),
-                      builder: (BuildContext context,
-                          AsyncSnapshot<String?> snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return CircularProgressIndicator();
-                        } else if (snapshot.hasError) {
-                          return Icon(Icons.error);
-                        } else if (snapshot.hasData) {
-                          return Image.network(
-                            snapshot.data!,
-                            width: 32,
-                            height: 32,
-                            fit: BoxFit.cover,
-                          );
-                        } else {
-                          return SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: Placeholder(),
-                          );
-                        }
-                      },
+                    child: SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: FutureBuilder(
+                        future: loadUserField(context, "photourl"),
+                        builder: (BuildContext context,
+                            AsyncSnapshot<String?> snapshot) {
+                          if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                            return Image.network(
+                              snapshot.data!,
+                              width: 32,
+                              height: 32,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(color: Colors.lightBlue.shade100, child: const Icon(Icons.person, size: 16, color: Colors.white)),
+                            );
+                          }
+                          return Container(color: Colors.lightBlue.shade100, child: const Icon(Icons.person, size: 16, color: Colors.white));
+                        },
+                      ),
                     ),
                   ),
                   SizedBox(width: 8),
@@ -117,6 +113,11 @@ class LentaPost extends StatelessWidget {
               width: double.infinity,
               height: 300,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                height: 300,
+                color: Colors.grey.shade200,
+                child: const Center(child: Icon(Icons.broken_image_outlined, size: 48, color: Colors.grey)),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),

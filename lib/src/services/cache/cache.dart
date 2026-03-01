@@ -38,8 +38,8 @@ class CacheService {
     if (_cache.length == 100) {
       _cache.remove(_cache.keys.first);
     }
-    _cache[key] = {'snapshot': value, 'addedAt': DateTime.now()};
-    _saveCache(); // Save cache after adding an item
+    _cache[key] = {'snapshot': value, 'addedAt': DateTime.now().toIso8601String()};
+    // Note: not persisted to SharedPreferences as DocumentSnapshot is not JSON-serializable
   }
 
 
