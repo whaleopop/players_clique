@@ -302,331 +302,221 @@ class _Profile_Page extends State<Profile_Page> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        body: SingleChildScrollView(
-          child: Container(
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    Container(
-                      width: MediaQuery.of(context).size.width,
-                      height: 414,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0x3F000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 4),
-                            spreadRadius: 0,
-                          )
-                        ],
+        backgroundColor: const Color(0xFFF5F7FA),
+        body: CustomScrollView(
+          slivers: [
+            // Шапка профиля
+            SliverToBoxAdapter(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Синий баннер
+                  Container(
+                    height: 140,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF0071BC), Color(0xFF29ABE2)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                     ),
-                    FutureBuilder<List<DocumentSnapshot>>(
-                      future: _fetchPosts(),
-                      builder: (BuildContext context,
-                          AsyncSnapshot<List<DocumentSnapshot>> snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return CircularProgressIndicator(); // Отображение индикатора загрузки
-                        } else if (snapshot.hasError) {
-                          return Text(
-                              'Error: ${snapshot.error}'); // Отображение ошибки
-                        } else {
-                          return Container(
-                            height: 400,
-                            child: GridView.builder(
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                              ),
-                              itemCount: snapshot.data!.length,
-                              itemBuilder: (context, index) =>
-                                  _buildRequestListItem(snapshot.data![index]),
-                            ),
-                          );
-                        }
-                      },
-                    )
-                  ],
-
-                  //GRID VIEW POSTS FUTURE BUILDER
-                ),
-                Column(
-                  children: [
-                    Container(
-                      width: MediaQuery.of(context).size.width,
-                      height: 160,
+                  ),
+                  // Белая карточка профиля
+                  Padding(
+                    padding: const EdgeInsets.only(top: 90),
+                    child: Container(
                       decoration: const BoxDecoration(
-                        color: Color(0xFF0071BC),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0x3F000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 4),
-                            spreadRadius: 0,
-                          )
-                        ],
+                        color: Color(0xFFF5F7FA),
                       ),
-                    ),
-                  ],
-                ),
-                Column(
-                  children: [
-                    SizedBox(
-                      height: 40,
-                    ),
-                    Stack(
-                      children: [
-                        Center(
-                          child: ClipOval(
-                            child: SizedBox.fromSize(
-                              size: Size.fromRadius(83), // Image radius
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.lightBlue,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.25),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
+                      padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
+                      child: Column(
+                        children: [
+                          // Имя
+                          FutureBuilder(
+                            future: loadUserField("fio"),
+                            builder: (context, AsyncSnapshot<String?> snapshot) {
+                              final name = snapshot.data ?? '';
+                              return Text(
+                                name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 20,
+                                  letterSpacing: 0.5,
                                 ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          // Статистика
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _statItem('0', 'Посты'),
+                              Container(width: 1, height: 36, color: Colors.grey.shade300),
+                              FutureBuilder(
+                                future: loadUserFieldList("players"),
+                                builder: (context, AsyncSnapshot<List<String>> snapshot) {
+                                  final count = snapshot.data?.length ?? 0;
+                                  return _statItem('$count', 'Игроки');
+                                },
                               ),
-                            ),
+                              Container(width: 1, height: 36, color: Colors.grey.shade300),
+                              _statItem('0', 'Саппорты'),
+                            ],
                           ),
-                        ),
-                        Center(
-                            child: ClipOval(
-                          child: SizedBox.fromSize(
-                            size: Size.fromRadius(83), // Image radius
-                            child: FutureBuilder(
-                                future: loadUserField("photourl"),
-                                builder: (BuildContext context,
-                                    AsyncSnapshot<String?> snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const CircularProgressIndicator(); // Show a loading indicator while waiting for the data
-                                  } else if (snapshot.hasError) {
-                                    return Text(
-                                        "${snapshot.error}"); // Show an error message if there's an error
-                                  } else if (snapshot.hasData) {
-                                    return Image.network(
-                                      "${snapshot.data}",
-                                      fit: BoxFit.cover,
-                                    ); // Display the field value if it's available
-                                  } else {
-                                    return Text(
-                                        "No data"); // Show a message if there's no data
-                                  }
-                                }),
+                          const SizedBox(height: 16),
+                          // Кнопки Edit / Share
+                          Row(
+                            children: [
+                              Expanded(
+                                child: BlueButton(onTap: () {}, text: 'Редактировать', width: double.infinity),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: BlueButton(onTap: () {}, text: 'Поделиться', width: double.infinity),
+                              ),
+                            ],
                           ),
-                        )),
-                        Positioned(
-                          right: 80,
-                          child: ClipOval(
-                            child: SizedBox.fromSize(
-                              size: Size.fromRadius(20), // Image radius
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.lightBlue,
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: Colors.black.withOpacity(0.5),
-                                        blurRadius: 1,
-                                        spreadRadius: 10),
-                                  ],
-                                ),
-                                child: InkWell(
-                                  onTap: _pickFile, //getImage,
-                                  child: Icon(
-                                    Icons.add_a_photo,
-                                    color: Colors.white,
+                          const SizedBox(height: 12),
+                          // Иконки выход / добавить пост
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _iconBtn(icon: PlayerIcon.logout_fill, onTap: signOut),
+                              _iconBtn(
+                                icon: PlayerIcon.post_add,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => Add_Post_Page(postService: PostService()),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Stack(
-                      children: [
-                        Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                height: 16,
-                              ),
-                              Text("0",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
-                              Text("Посты",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
                             ],
                           ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                FutureBuilder(
-                                    future: loadUserFieldList("players"),
-                                    builder: (BuildContext context,
-                                        AsyncSnapshot<List<String>> snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return const CircularProgressIndicator(); // Show a loading indicator while waiting for the data
-                                      } else if (snapshot.hasError) {
-                                        return Text(
-                                            "${snapshot.error}"); // Show an error message if there's an error
-                                      } else if (snapshot.hasData) {
-                                        return Text("${snapshot.data?.length}",
-                                            style: TextStyle(
-                                                fontWeight: FontWeight
-                                                    .bold)); // Display the field value if it's available
-                                      } else {
-                                        return Text(
-                                            "No data"); // Show a message if there's no data
-                                      }
-                                    }),
-                                Text("Игроки",
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                            SizedBox(width: 100),
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text("0",
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                                Text("Саппорты",
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                              ],
-                            )
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(
-                      height: 10,
-                    ),
-                    FutureBuilder(
-                        future: loadUserField("fio"),
-                        builder: (BuildContext context,
-                            AsyncSnapshot<String?> snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const CircularProgressIndicator(); // Show a loading indicator while waiting for the data
-                          } else if (snapshot.hasError) {
-                            return Text(
-                                "${snapshot.error}"); // Show an error message if there's an error
-                          } else if (snapshot.hasData) {
-                            return Text("${snapshot.data}",
-                                style: TextStyle(
-                                  fontWeight:
-                                      FontWeight.bold, // Делает текст жирным
-                                  fontSize: 18,
-                                  letterSpacing: 2.0,
-                                )); // Display the field value if it's available
-                          } else {
-                            return Text(
-                                "No data"); // Show a message if there's no data
-                          }
-                        }),
-                    SizedBox(
-                      height: 16,
-                    ),
-                    Row(
-                      textDirection: TextDirection.ltr,
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        BlueButton(
-                          onTap: () {},
-                          text: 'Edit profile',
-                          width: 150,
-                        ),
-                        BlueButton(
-                            onTap: () {}, text: 'Share profile', width: 150),
-                      ],
-                    ),
-                    const SizedBox(
-                      height: 30,
-                    ),
-                    Row(
-                        textDirection: TextDirection.ltr,
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  ),
+                  // Аватар
+                  Positioned(
+                    top: 88,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Stack(
                         children: [
-                          InkWell(
-                            onTap: signOut,
-                            child: Container(
-                              width: 100,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                color: Colors.white,
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x3F000000),
-                                    blurRadius: 4,
-                                    offset: Offset(0, 4),
-                                    spreadRadius: 0,
-                                  )
-                                ],
-                              ),
-                              child: Icon(
-                                PlayerIcon.logout_fill,
-                                size: 25,
-                                color: Colors.lightBlue,
+                          ClipOval(
+                            child: SizedBox.fromSize(
+                              size: const Size.fromRadius(50),
+                              child: FutureBuilder(
+                                future: loadUserField("photourl"),
+                                builder: (context, AsyncSnapshot<String?> snapshot) {
+                                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                                    return Image.network(snapshot.data!, fit: BoxFit.cover);
+                                  }
+                                  return Container(
+                                    color: Colors.lightBlue.shade100,
+                                    child: const Icon(Icons.person, size: 50, color: Colors.white),
+                                  );
+                                },
                               ),
                             ),
                           ),
-                          InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => Add_Post_Page(
-                                        postService: PostService())),
-                              );
-                            },
-                            child: Container(
-                              width: 100,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                color: Colors.white,
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x3F000000),
-                                    blurRadius: 4,
-                                    offset: Offset(0, 4),
-                                    spreadRadius: 0,
-                                  )
-                                ],
-                              ),
-                              child: const Icon(
-                                PlayerIcon.post_add,
-                                size: 25,
-                                color: Colors.lightBlue,
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: _pickFile,
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0071BC),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: const Icon(Icons.add_a_photo, color: Colors.white, size: 14),
                               ),
                             ),
                           ),
-                        ]),
-                  ],
-                ),
-              ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            // Разделитель
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+            // Сетка постов
+            FutureBuilder<List<DocumentSnapshot>>(
+              future: _fetchPosts(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  );
+                }
+                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(child: Text('Нет постов', style: TextStyle(color: Colors.grey))),
+                    ),
+                  );
+                }
+                return SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildRequestListItem(snapshot.data![index]),
+                    childCount: snapshot.data!.length,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 2,
+                    mainAxisSpacing: 2,
+                  ),
+                );
+              },
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _statItem(String value, String label) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _iconBtn({required IconData icon, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: 52,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.07),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 22, color: const Color(0xFF0071BC)),
       ),
     );
   }
@@ -647,12 +537,11 @@ class _Profile_Page extends State<Profile_Page> {
               .collection("post")
               .get();
           // Добавляем документы в кэш
-          querySnapshot.docs.forEach((doc) {
+          for (final doc in querySnapshot.docs) {
             cacheService.addToCache(doc.id, doc);
-          });
+          }
           return querySnapshot.docs;
         } catch (e) {
-          print("Error fetching user posts: $e");
           return [];
         }
       }

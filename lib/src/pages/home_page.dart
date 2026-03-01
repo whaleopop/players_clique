@@ -36,48 +36,44 @@ class _MyHomePage extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding:  EdgeInsets.only(bottom: 10.0),
-        child: Scaffold(
-          bottomNavigationBar: CurvedNavigationBar(
-            backgroundColor: Colors.white,
-            animationDuration: Duration(milliseconds: 300),
-            color: Color(0xFF0071BC),
-            buttonBackgroundColor: Colors.lightBlue,
-            height: 50,
-            index: _selectedIndex,
-            onTap: (index) {
-              setState(() {
-                _selectedIndex = index;
-                _pageController.animateToPage(index,
-                    duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
-              });
-            },
-            items: [
-              Icon(PlayerIcon.play_arrow_fill, color: Colors.white),
-              Icon(PlayerIcon.search, color: Colors.white),
-              Icon(PlayerIcon.settings_accessibility_fill, color: Colors.white),
-              Icon(PlayerIcon.place_black, color: Colors.white),
-              Icon(PlayerIcon.chat_fill, color: Colors.white),
-            ],
-          ),
-          body: PageView(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-            children: <Widget>[
-              Container(child: Posts_Page()),
-              Container(child: Search_Page()),
-              Container(child: Profile_Page()),
-              Container(child: Map_Page()),
-              Container(child: Message_Page()),
-            ],
-          ),
-        ),
+    return Scaffold(
+      bottomNavigationBar: CurvedNavigationBar(
+        backgroundColor: const Color(0xFFF5F7FA),
+        animationDuration: const Duration(milliseconds: 300),
+        color: const Color(0xFF0071BC),
+        buttonBackgroundColor: const Color(0xFF29ABE2),
+        height: 56,
+        index: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+            _pageController.animateToPage(index,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut);
+          });
+        },
+        items: const [
+          Icon(PlayerIcon.play_arrow_fill, color: Colors.white, size: 22),
+          Icon(PlayerIcon.search, color: Colors.white, size: 22),
+          Icon(PlayerIcon.settings_accessibility_fill, color: Colors.white, size: 26),
+          Icon(PlayerIcon.place_black, color: Colors.white, size: 22),
+          Icon(PlayerIcon.chat_fill, color: Colors.white, size: 22),
+        ],
+      ),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        children: <Widget>[
+          Posts_Page(),
+          Search_Page(),
+          Profile_Page(),
+          Map_Page(),
+          Message_Page(),
+        ],
       ),
     );
   }

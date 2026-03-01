@@ -15,16 +15,19 @@ class Buttons extends StatelessWidget {
     return GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(15),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0071BC), Color(0xFF29ABE2)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Color(0x3F000000).withOpacity(0.5),
-                // Увеличьте прозрачность, если необходимо
-                blurRadius: 4,
-                offset: Offset(4, 4),
+                color: const Color(0xFF0071BC).withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
                 spreadRadius: 0,
               ),
             ],
@@ -33,10 +36,11 @@ class Buttons extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 25,
-                  fontFamily: "Arial"),
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ));

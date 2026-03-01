@@ -70,17 +70,30 @@ class _Posts_Page extends State<Posts_Page> {
           builder: (BuildContext context,
               AsyncSnapshot<List<DocumentSnapshot>> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator(); // Display loading indicator
+              return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}'); // Display error
+              return Center(child: Text('Ошибка: ${snapshot.error}'));
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.dynamic_feed_outlined, size: 64, color: Colors.grey.shade300),
+                    const SizedBox(height: 12),
+                    Text('Лента пуста', style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    Text('Добавьте друзей, чтобы видеть их посты',
+                        style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                  ],
+                ),
+              );
             } else {
-              return Container(
-                child: ListView.builder(
-                  itemCount: snapshot.data!.length,
-                  itemBuilder: (context, index) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Add padding
-                    child: _buildRequestListItem(snapshot.data![index]),
-                  ),
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildRequestListItem(snapshot.data![index]),
                 ),
               );
             }

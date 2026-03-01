@@ -58,130 +58,111 @@ class _MyRegisterPage extends State<MyRegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        resizeToAvoidBottomInset: true,
-        backgroundColor: Colors.white, // Устанавливаем белый фон для Scaffold
-        body: Stack(children: [
-          Center(
-              child: Stack(
-                children: [
-                  Transform.translate(
-                    offset: Offset(0, -60),
-                    child: Transform.rotate(
-                      angle: -50.33 * 3.14159 / 180, // Angle in radians
-
-                      child: Transform.scale(
-                        scale: 2,
-                        child: Container(
-                          width: 1000, // Line width
-                          height: 50, // Line thickness
-                          color: Color(0xFF0071BC), // Line color
-                        ),
-                      ),
-                    ),
-                  ),
-                  Transform.translate(
-                    offset: Offset(0, 400),
-                    child: Transform.rotate(
-                      angle: -128.16 * 3.14159 / 180, // Angle in radians
-
-                      child: Transform.scale(
-                        scale: 2,
-                        child: Container(
-                          width: 1000, // Line width
-                          height: 50, // Line thickness
-                          color: Color(0xFF0071BC), // Line color
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),),
-          Align(
-            alignment: Alignment.center,
-            child: Container(
-              margin: EdgeInsets.only(left: 30, right: 30),
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 45),
-              clipBehavior: Clip.antiAlias,
-              decoration: ShapeDecoration(
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                shadows: const [
-                  BoxShadow(
-                    color: Color(0x3F000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 4),
-                    spreadRadius: 0,
-                  )
-                ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 16),
+              SvgPicture.asset(
+                'assets/image/logo.svg',
+                height: 70,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Регистрация',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 25,
-                      fontFamily: 'Arial',
-                      fontWeight: FontWeight.w900,
-                      height: 1,
+              const SizedBox(height: 10),
+              const Text(
+                'Players Clique',
+                style: TextStyle(
+                  color: Color(0xFF0071BC),
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.07),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  MyTextField(
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Создать аккаунт',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Заполните данные для регистрации',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
+                    ),
+                    const SizedBox(height: 24),
+                    MyTextField(
                       controller: fioController,
                       obscureText: false,
-                      hintText: "Имя"),
-                  const SizedBox(height: 15),
-                  MyTextField(
+                      hintText: 'Имя',
+                      prefixIcon: Icons.person_outline,
+                    ),
+                    const SizedBox(height: 14),
+                    MyTextField(
                       controller: emailController,
                       obscureText: false,
-                      hintText: "Почта"),
-                  SizedBox(height: 15),
-                  MyTextField(
+                      hintText: 'Почта',
+                      prefixIcon: Icons.email_outlined,
+                    ),
+                    const SizedBox(height: 14),
+                    MyTextField(
                       controller: passwordController,
                       obscureText: true,
-                      hintText: "Пароль"),
-                  SizedBox(height: 15),
-                  MyTextField(
+                      hintText: 'Пароль',
+                      prefixIcon: Icons.lock_outline,
+                    ),
+                    const SizedBox(height: 14),
+                    MyTextField(
                       controller: repasswordController,
                       obscureText: true,
-                      hintText: "Потвердите пароль"),
-                  SizedBox(height: 15),
-                  Buttons(
-                    onTap: () {
-                      signUp();
-                    },
-                    text: "Войти",
-                  ),
-                  SizedBox(height: 5),
-                  Column(
-                    children: [
-                      GestureDetector(
-                        onTap: widget.onTap,
-                        child: const Text(
-                          'Есть аккаунт?',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 13,
-                            fontFamily: 'Arial',
-                            fontWeight: FontWeight.w900,
-                          ),
+                      hintText: 'Подтвердите пароль',
+                      prefixIcon: Icons.lock_outline,
+                    ),
+                    const SizedBox(height: 24),
+                    Buttons(onTap: signUp, text: 'Зарегистрироваться'),
+                    const SizedBox(height: 14),
+                    GestureDetector(
+                      onTap: widget.onTap,
+                      child: const Text(
+                        'Уже есть аккаунт? Войти',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFF0071BC),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                      )
-                    ],
-                  )
-                ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-        ]),
+        ),
       ),
     );
   }

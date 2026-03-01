@@ -32,119 +32,96 @@ class _MyLoginPage extends State<MyLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: Colors.white, // Устанавливаем белый фон для Scaffold
-        body: Stack(children: [
-          Center(
-            child: Stack(
-              children: [
-                Transform.translate(
-                  offset: Offset(0, -60),
-                  child: Transform.rotate(
-                    angle: -50.33 * 3.14159 / 180, // Angle in radians
-                    
-                    child: Transform.scale(
-                      scale: 2,
-                      child: Container(
-                        width: 1000, // Line width
-                        height: 50, // Line thickness
-                        color: Color(0xFF0071BC), // Line color
-                      ),
-                    ),
-                  ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 24),
+              SvgPicture.asset(
+                'assets/image/logo.svg',
+                height: 80,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Players Clique',
+                style: TextStyle(
+                  color: Color(0xFF0071BC),
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
                 ),
-                Transform.translate(
-                  offset: Offset(0, 400),
-                  child: Transform.rotate(
-                    angle: -128.16 * 3.14159 / 180, // Angle in radians
-
-                    child: Transform.scale(
-                      scale: 2,
-                      child: Container(
-                        width: 1000, // Line width
-                        height: 50, // Line thickness
-                        color: Color(0xFF0071BC), // Line color
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            child: Center(
-              child: Container(
-                margin: const EdgeInsets.only(left: 30, right: 30),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 30, vertical: 45),
-                clipBehavior: Clip.antiAlias,
-                decoration: ShapeDecoration(
+              ),
+              const SizedBox(height: 40),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                decoration: BoxDecoration(
                   color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  shadows: const [
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x3F000000),
-                      blurRadius: 4,
-                      offset: Offset(0, 4),
-                      spreadRadius: 0,
-                    )
+                      color: Colors.black.withValues(alpha: 0.07),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
                   ],
                 ),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Войти',
+                      'Добро пожаловать',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 36,
-                        fontFamily: 'Arial',
-                        fontWeight: FontWeight.w900,
-                        height: 0,
+                        color: Colors.black87,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    SizedBox(height: 30),
-                    MyTextField(
-                        controller: emailController,
-                        obscureText: false,
-                        hintText: "Почта"),
-                    SizedBox(height: 30),
-                    MyTextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        hintText: "Пароль"),
-                    SizedBox(height: 30),
-                    Buttons(
-                      onTap: () {
-                        signIn();
-                      },
-                      text: "Войти",
+                    const SizedBox(height: 6),
+                    Text(
+                      'Войдите в свой аккаунт',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 28),
+                    MyTextField(
+                      controller: emailController,
+                      obscureText: false,
+                      hintText: 'Почта',
+                      prefixIcon: Icons.email_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    MyTextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      hintText: 'Пароль',
+                      prefixIcon: Icons.lock_outline,
+                    ),
+                    const SizedBox(height: 28),
+                    Buttons(onTap: signIn, text: 'Войти'),
+                    const SizedBox(height: 16),
                     GestureDetector(
                       onTap: widget.onTap,
                       child: const Text(
-                        'Ёще нет аккаунта?',
+                        'Ещё нет аккаунта? Зарегистрироваться',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontFamily: 'Arial',
-                          fontWeight: FontWeight.w900,
-                          height: 0,
+                          color: Color(0xFF0071BC),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-        ]),
+        ),
       ),
     );
   }
