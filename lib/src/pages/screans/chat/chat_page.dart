@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:players_clique/src/components/messages/chat_bubble.dart';
+import 'package:players_clique/src/pages/screans/profile_sub_screen/profile_player.dart';
 import 'package:players_clique/src/services/auth/auth_service.dart';
 import 'package:players_clique/src/services/chat/chat_service.dart';
 import 'package:provider/provider.dart';
@@ -145,24 +146,32 @@ class _ChatPageState extends State<ChatPage> {
         backgroundColor: const Color(0xFF0071BC),
         foregroundColor: Colors.white,
         titleSpacing: 0,
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                  ? NetworkImage(_avatarUrl!) as ImageProvider
-                  : null,
-              backgroundColor: Colors.lightBlue.shade100,
-              child: (_avatarUrl == null || _avatarUrl!.isEmpty)
-                  ? const Icon(Icons.person, color: Colors.white, size: 20)
-                  : null,
+        title: GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => Profile_Player(uid: widget.receiverUserID),
             ),
-            const SizedBox(width: 10),
-            Text(
-              _displayName ?? widget.receiveruserEmail,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-            ),
-          ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
+                    ? NetworkImage(_avatarUrl!) as ImageProvider
+                    : null,
+                backgroundColor: Colors.lightBlue.shade100,
+                child: (_avatarUrl == null || _avatarUrl!.isEmpty)
+                    ? const Icon(Icons.person, color: Colors.white, size: 20)
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _displayName ?? widget.receiveruserEmail,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
         ),
         elevation: 0,
       ),
