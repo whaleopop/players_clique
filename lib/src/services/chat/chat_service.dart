@@ -108,6 +108,7 @@ class ChatService extends ChangeNotifier {
       SetOptions(merge: true),
     );
     await batch.commit();
+    _checkMutualFriendship(currentUserId, receiverId, chatRoomId);
   }
 
   Future<void> sendStickerMessage(String receiverId, String stickerEmoji) async {
@@ -141,6 +142,7 @@ class ChatService extends ChangeNotifier {
       SetOptions(merge: true),
     );
     await batch.commit();
+    _checkMutualFriendship(currentUserId, receiverId, chatRoomId);
   }
 
   Stream<QuerySnapshot> getLastMessage(String userId, String otherUserId) {

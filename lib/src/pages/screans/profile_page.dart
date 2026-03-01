@@ -50,11 +50,13 @@ class _Profile_Page extends State<Profile_Page> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final uid = authService.getCurrentUserUid();
     if (uid == null) return 0;
-    final snap = await FirebaseFirestore.instance
-        .collection('chat_rooms')
-        .where('participants', arrayContains: uid)
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
         .get();
-    return snap.docs.length;
+    final data = doc.data() ?? {};
+    final friends = data['friends'] as List<dynamic>? ?? [];
+    return friends.length;
   }
 
   Future<File> cropImageToCircle(File file) async {

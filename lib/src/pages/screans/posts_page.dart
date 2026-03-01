@@ -13,6 +13,7 @@ class _Posts_Page extends State<Posts_Page> {
   DocumentSnapshot? _lastDoc;
   bool _isLoading = false;
   bool _hasMore = true;
+  String? _error;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -53,8 +54,10 @@ class _Posts_Page extends State<Posts_Page> {
         _posts.addAll(snapshot.docs);
       }
       if (snapshot.docs.length < _pageSize) _hasMore = false;
+      _error = null;
     } catch (e) {
       debugPrint('Posts load error: $e');
+      _error = e.toString();
     }
 
     if (mounted) setState(() => _isLoading = false);
@@ -79,7 +82,29 @@ class _Posts_Page extends State<Posts_Page> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildStatsBar()),
-              if (_posts.isEmpty && !_isLoading)
+              if (_error != null)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.error_outline,
+                              size: 48, color: Colors.red.shade300),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Ошибка загрузки постов:\n$_error',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Colors.grey.shade600, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else if (_posts.isEmpty && !_isLoading)
                 SliverFillRemaining(
                   child: Center(
                     child: Column(
