@@ -16,16 +16,11 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePage extends State<MyHomePage> {
   int _selectedIndex = 1;
-  late PageController _pageController;
   Timer? _presenceTimer;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 1);
-    _pageController.addListener(() {
-      setState(() => _selectedIndex = _pageController.page!.round());
-    });
     // Update presence immediately then every 3 minutes
     WidgetsBinding.instance.addPostFrameCallback((_) => _updatePresence());
     _presenceTimer =
@@ -40,7 +35,6 @@ class _MyHomePage extends State<MyHomePage> {
   @override
   void dispose() {
     _presenceTimer?.cancel();
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -58,9 +52,6 @@ class _MyHomePage extends State<MyHomePage> {
         index: _selectedIndex,
         onTap: (index) {
           setState(() => _selectedIndex = index);
-          _pageController.animateToPage(index,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut);
         },
         items: const [
           Icon(PlayerIcon.play_arrow_fill, color: Colors.white, size: 22),
@@ -69,10 +60,8 @@ class _MyHomePage extends State<MyHomePage> {
           Icon(PlayerIcon.chat_fill, color: Colors.white, size: 22),
         ],
       ),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        onPageChanged: (index) => setState(() => _selectedIndex = index),
+      body: IndexedStack(
+        index: _selectedIndex,
         children: <Widget>[
           Posts_Page(),
           Profile_Page(),
