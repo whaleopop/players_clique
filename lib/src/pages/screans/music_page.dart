@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../services/ynison_service.dart';
 
 const _oauthUrl =
     'https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d';
@@ -51,9 +52,45 @@ class _MusicPageState extends State<Music_Page> {
     super.dispose();
   }
 
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  Future<void> _saveTokenRemote(String token) async {
+    final uid = _uid;
+    if (uid == null) return;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .set({'yandex_music_token': token}, SetOptions(merge: true));
+  }
+
+  Future<void> _removeTokenRemote() async {
+    final uid = _uid;
+    if (uid == null) return;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({'yandex_music_token': FieldValue.delete()});
+  }
+
   Future<void> _loadToken() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey);
+    String? token = prefs.getString(_tokenKey);
+
+    // Если нет локально — тянем из Firestore и кэшируем
+    if (token == null) {
+      final uid = _uid;
+      if (uid != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+        token = doc.data()?['yandex_music_token'] as String?;
+        if (token != null) {
+          await prefs.setString(_tokenKey, token);
+        }
+      }
+    }
+
     setState(() {
       _token = token;
       _loading = false;
@@ -74,70 +111,20 @@ class _MusicPageState extends State<Music_Page> {
     setState(() => _trackLoading = true);
 
     try {
-      // 1. Получаем текущий трек
-      final resp = await http.get(
-        Uri.parse('http://api.mipoh.ru/get_current_track_beta'),
-        headers: {'ya-token': _token!},
-      ).timeout(const Duration(seconds: 10));
-
-      if (resp.statusCode != 200) {
-        setState(() {
-          _currentTrack = null;
-          _trackLoading = false;
-        });
-        return;
-      }
-
-      final data = jsonDecode(resp.body);
-      final trackId = data['track']?['track_id']?.toString();
-
-      if (trackId == null) {
-        setState(() {
-          _currentTrack = null;
-          _trackLoading = false;
-        });
-        return;
-      }
-
-      // 2. Получаем детали трека через Yandex Music API
-      final trackResp = await http.get(
-        Uri.parse('https://api.music.yandex.net/tracks/$trackId'),
-        headers: {'Authorization': 'OAuth $_token'},
-      ).timeout(const Duration(seconds: 10));
-
-      if (trackResp.statusCode != 200) {
-        setState(() {
-          _currentTrack = null;
-          _trackLoading = false;
-        });
-        return;
-      }
-
-      final trackData = jsonDecode(trackResp.body);
-      final result = trackData['result'];
-      final track = (result is List && result.isNotEmpty) ? result[0] : result;
-
-      final title = track['title'] as String? ?? 'Неизвестный трек';
-      final artists = (track['artists'] as List?)
-              ?.map((a) => a['name'] as String? ?? '')
-              .where((n) => n.isNotEmpty)
-              .join(', ') ??
-          'Неизвестный артист';
-
-      String? coverUrl;
-      final albums = track['albums'] as List?;
-      if (albums != null && albums.isNotEmpty) {
-        final raw = albums[0]['coverUri'] as String?;
-        if (raw != null) {
-          coverUrl = 'https://${raw.replaceFirst('//', '').replaceAll('%%', '400x400')}';
-        }
-      }
-
+      final info = await YnisonService.fetchCurrentTrack(_token!);
+      if (!mounted) return;
       setState(() {
-        _currentTrack = _TrackInfo(title: title, artist: artists, coverUrl: coverUrl);
+        _currentTrack = info == null
+            ? null
+            : _TrackInfo(
+                title: info.title,
+                artist: info.artist,
+                coverUrl: info.coverUrl,
+              );
         _trackLoading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _currentTrack = null;
         _trackLoading = false;
@@ -171,6 +158,7 @@ class _MusicPageState extends State<Music_Page> {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+    await _saveTokenRemote(token);
     _tokenController.clear();
     setState(() => _token = token);
     _startTracking();
@@ -180,6 +168,7 @@ class _MusicPageState extends State<Music_Page> {
     _refreshTimer?.cancel();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await _removeTokenRemote();
     setState(() {
       _token = null;
       _currentTrack = null;

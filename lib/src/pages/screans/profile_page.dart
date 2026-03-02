@@ -2,12 +2,14 @@ import 'dart:io';
 import 'dart:math';
 
 import '../../utils/web_update.dart';
+import '../../services/ynison_service.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:provider/provider.dart';
 import '../../components/buttons/blue_buttons.dart';
@@ -432,6 +434,8 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                         );
                       },
                     ),
+                    const SizedBox(height: 6),
+                    _NowPlayingWidget(),
                     const SizedBox(height: 18),
                     // Статистика
                     Row(
@@ -941,3 +945,57 @@ class _LikedBySectionState extends State<_LikedBySection> {
   }
 }
 
+// ── Now Playing ──────────────────────────────────────────────────────────────
+
+class _NowPlayingWidget extends StatefulWidget {
+  @override
+  State<_NowPlayingWidget> createState() => _NowPlayingWidgetState();
+}
+
+class _NowPlayingWidgetState extends State<_NowPlayingWidget> {
+  TrackInfo? _track;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('yandex_music_token');
+    if (token == null) {
+      if (mounted) setState(() => _loaded = true);
+      return;
+    }
+    try {
+      final info = await YnisonService.fetchCurrentTrack(token);
+      if (mounted) setState(() { _track = info; _loaded = true; });
+    } catch (_) {
+      if (mounted) setState(() => _loaded = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || _track == null || _track!.paused) return const SizedBox.shrink();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.music_note_rounded, size: 13, color: Color(0xFFFC3F1D)),
+        const SizedBox(width: 4),
+        Text(
+          '${_track!.artist} — ${_track!.title}',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
