@@ -26,16 +26,17 @@ class ChatBubble extends StatelessWidget {
       case 'image':
         return _buildImageBubble(context);
       default:
-        return _buildTextBubble();
+        return _buildTextBubble(context);
     }
   }
 
-  Widget _buildTextBubble() {
+  Widget _buildTextBubble(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       constraints: const BoxConstraints(maxWidth: 260),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isMe ? const Color(0xFF0071BC) : Colors.white,
+        color: isMe ? const Color(0xFF0071BC) : cs.surface,
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(18),
           topRight: const Radius.circular(18),
@@ -58,7 +59,7 @@ class ChatBubble extends StatelessWidget {
             message,
             style: TextStyle(
               fontSize: 15,
-              color: isMe ? Colors.white : Colors.black87,
+              color: isMe ? Colors.white : cs.onSurface,
               height: 1.3,
             ),
           ),
@@ -73,7 +74,7 @@ class ChatBubble extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontStyle: FontStyle.italic,
-                      color: isMe ? Colors.white54 : Colors.grey.shade400,
+                      color: isMe ? Colors.white54 : cs.onSurface.withValues(alpha: 0.45),
                     ),
                   ),
                 if (time != null)
@@ -81,7 +82,7 @@ class ChatBubble extends StatelessWidget {
                     _formatTime(time!),
                     style: TextStyle(
                       fontSize: 10,
-                      color: isMe ? Colors.white54 : Colors.grey.shade400,
+                      color: isMe ? Colors.white54 : cs.onSurface.withValues(alpha: 0.45),
                     ),
                   ),
               ],
@@ -128,7 +129,7 @@ class ChatBubble extends StatelessWidget {
                   return Container(
                     width: 220,
                     height: 160,
-                    color: Colors.grey.shade200,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     child: const Center(child: CircularProgressIndicator()),
                   );
                 },

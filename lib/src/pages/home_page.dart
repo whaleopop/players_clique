@@ -46,10 +46,11 @@ class _MyHomePage extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = Theme.of(context).scaffoldBackgroundColor;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: bg,
       bottomNavigationBar: CurvedNavigationBar(
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: bg,
         animationDuration: const Duration(milliseconds: 300),
         color: const Color(0xFF0071BC),
         buttonBackgroundColor: const Color(0xFF29ABE2),

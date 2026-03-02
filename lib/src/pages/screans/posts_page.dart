@@ -77,7 +77,7 @@ class _Posts_Page extends State<Posts_Page> with AutomaticKeepAliveClientMixin {
     super.build(context);
     return SafeArea(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: RefreshIndicator(
           onRefresh: _refresh,
           child: CustomScrollView(
@@ -177,7 +177,7 @@ class _Posts_Page extends State<Posts_Page> with AutomaticKeepAliveClientMixin {
             }).length ??
             0;
         return Container(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             children: [

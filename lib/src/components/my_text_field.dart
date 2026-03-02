@@ -16,9 +16,10 @@ class MyTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -32,7 +33,7 @@ class MyTextField extends StatelessWidget {
         controller: controller,
         obscureText: obscureText,
         decoration: InputDecoration(
-          fillColor: Colors.white,
+          fillColor: surface,
           filled: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -48,9 +49,9 @@ class MyTextField extends StatelessWidget {
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           hintText: hintText,
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
+          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), fontSize: 15),
           prefixIcon: prefixIcon != null
-              ? Icon(prefixIcon, color: Colors.grey.shade400, size: 20)
+              ? Icon(prefixIcon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), size: 20)
               : null,
           counterText: '',
           isDense: false,

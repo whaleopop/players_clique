@@ -347,13 +347,13 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     super.build(context);
     return SafeArea(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: CustomScrollView(
           slivers: [
             // Профиль: аватар + инфо
             SliverToBoxAdapter(
               child: Container(
-                color: const Color(0xFFF5F7FA),
+                color: Theme.of(context).scaffoldBackgroundColor,
                 padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
                 child: Column(
                   children: [
@@ -612,7 +612,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
       children: [
         Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
         const SizedBox(height: 2),
-        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+        Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55), fontSize: 12)),
       ],
     );
   }
@@ -625,7 +625,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
         width: 52,
         height: 40,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(

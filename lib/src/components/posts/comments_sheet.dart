@@ -136,7 +136,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
           width: 40,
           height: 4,
           decoration: BoxDecoration(
-            color: Colors.grey.shade300,
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -215,7 +215,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                       '${time.day}.${time.month.toString().padLeft(2, '0')} '
                                       '${time.hour}:${time.minute.toString().padLeft(2, '0')}',
                                       style: TextStyle(
-                                          color: Colors.grey.shade500,
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                                           fontSize: 11),
                                     ),
                                   ],
@@ -224,7 +224,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                     Text(
                                       'изм.',
                                       style: TextStyle(
-                                          color: Colors.grey.shade400,
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                                           fontSize: 10,
                                           fontStyle: FontStyle.italic),
                                     ),
@@ -265,7 +265,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
                     filled: true,
-                    fillColor: const Color(0xFFF0F4F8),
+                    fillColor: Theme.of(context).scaffoldBackgroundColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
                       borderSide: BorderSide.none,

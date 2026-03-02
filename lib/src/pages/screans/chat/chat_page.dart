@@ -233,7 +233,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: const Color(0xFF0071BC),
         foregroundColor: Colors.white,
@@ -355,8 +355,9 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildInputBar() {
+    final cs = Theme.of(context).colorScheme;
     return Container(
-      color: Colors.white,
+      color: cs.surface,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: SafeArea(
         top: false,
@@ -382,13 +383,13 @@ class _ChatPageState extends State<ChatPage> {
                 onSubmitted: (_) => _sendMessage(),
                 decoration: InputDecoration(
                   hintText: 'Напишите сообщение...',
-                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  hintStyle: TextStyle(color: cs.onSurface.withValues(alpha: 0.45)),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 10,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFF0F4F8),
+                  fillColor: Theme.of(context).scaffoldBackgroundColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
@@ -431,7 +432,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildStickerPanel() {
     return Container(
       height: 260,
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       child: GridView.builder(
         padding: const EdgeInsets.all(10),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

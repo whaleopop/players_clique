@@ -116,9 +116,10 @@ class _LentaPostState extends State<LentaPost> {
           builder: (context, commSnap) {
             final commentCount = commSnap.data?.docs.length ?? 0;
 
+            final cs = Theme.of(context).colorScheme;
             return Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -187,7 +188,7 @@ class _LentaPostState extends State<LentaPost> {
                         loadingBuilder: (context, child, progress) {
                           if (progress == null) return child;
                           return Container(
-                            color: Colors.grey.shade100,
+                            color: cs.surfaceContainerHighest,
                             child: Center(
                               child: CircularProgressIndicator(
                                 value: progress.expectedTotalBytes != null
@@ -220,26 +221,26 @@ class _LentaPostState extends State<LentaPost> {
                             isLiked
                                 ? PlayerIcon.favorite_fill
                                 : PlayerIcon.favorite,
-                            color: isLiked ? Colors.red : Colors.grey.shade600,
+                            color: isLiked ? Colors.red : cs.onSurface.withValues(alpha: 0.5),
                           ),
                           visualDensity: VisualDensity.compact,
                         ),
                         Text(
                           '${likedBy.length}',
                           style: TextStyle(
-                              fontSize: 13, color: Colors.grey.shade700),
+                              fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
                           onPressed: _openComments,
                           icon: Icon(Icons.chat_bubble_outline,
-                              color: Colors.grey.shade600),
+                              color: cs.onSurface.withValues(alpha: 0.5)),
                           visualDensity: VisualDensity.compact,
                         ),
                         Text(
                           '$commentCount',
                           style: TextStyle(
-                              fontSize: 13, color: Colors.grey.shade700),
+                              fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
                         ),
                       ],
                     ),

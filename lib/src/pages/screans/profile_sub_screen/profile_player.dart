@@ -81,9 +81,9 @@ class _ProfilePlayerState extends State<Profile_Player> {
     final friends = List<String>.from(_userData['friends'] ?? []);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
@@ -92,8 +92,8 @@ class _ProfilePlayerState extends State<Profile_Player> {
         ),
         title: Text(
           fio,
-          style: const TextStyle(
-            color: Color(0xFF1A1A2E),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 17,
           ),
@@ -105,7 +105,7 @@ class _ProfilePlayerState extends State<Profile_Player> {
           children: [
             // --- Header card ---
             Container(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
               child: Column(
                 children: [
@@ -124,10 +124,10 @@ class _ProfilePlayerState extends State<Profile_Player> {
                   const SizedBox(height: 12),
                   Text(
                     fio,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -174,12 +174,12 @@ class _ProfilePlayerState extends State<Profile_Player> {
                 child: Column(
                   children: [
                     Icon(Icons.photo_library_outlined,
-                        size: 56, color: Colors.grey.shade300),
+                        size: 56, color: Theme.of(context).colorScheme.outline),
                     const SizedBox(height: 12),
                     Text(
                       'Постов пока нет',
                       style: TextStyle(
-                          color: Colors.grey.shade500, fontSize: 15),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55), fontSize: 15),
                     ),
                   ],
                 ),

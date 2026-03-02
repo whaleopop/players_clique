@@ -66,7 +66,7 @@ class _MessageProfileState extends State<MessageProfile> {
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -110,10 +110,10 @@ class _MessageProfileState extends State<MessageProfile> {
                           children: [
                             Text(
                               widget.text,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
-                                color: Colors.black87,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 3),
@@ -123,7 +123,7 @@ class _MessageProfileState extends State<MessageProfile> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade500,
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
                               ),
                             ),
                           ],
@@ -134,7 +134,7 @@ class _MessageProfileState extends State<MessageProfile> {
                           time,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey.shade400,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                           ),
                         ),
                     ],

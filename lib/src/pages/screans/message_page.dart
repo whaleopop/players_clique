@@ -38,7 +38,7 @@ class _Message_Page extends State<Message_Page> with AutomaticKeepAliveClientMix
     final currentUid = _auth.currentUser!.uid;
     return SafeArea(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF0F4F8),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Column(
           children: [
             Padding(
@@ -56,7 +56,7 @@ class _Message_Page extends State<Message_Page> with AutomaticKeepAliveClientMix
                         )
                       : null,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
