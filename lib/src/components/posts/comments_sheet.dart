@@ -111,7 +111,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
               Navigator.pop(context);
               final newText = ctrl.text.trim();
               if (newText.isEmpty) return;
-              await _commentsRef.doc(doc.id).update({'text': newText});
+              await _commentsRef.doc(doc.id).update({'text': newText, 'edited': true});
             },
             child: const Text('Сохранить',
                 style: TextStyle(color: Colors.white)),
@@ -171,6 +171,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                   final photo = d['photourl'] as String? ?? '';
                   final fio = d['fio'] as String? ?? '';
                   final text = d['text'] as String? ?? '';
+                  final commentEdited = d['edited'] as bool? ?? false;
                   DateTime? time;
                   if (d['timestamp'] != null) {
                     time = (d['timestamp'] as Timestamp).toDate();
@@ -216,6 +217,16 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                       style: TextStyle(
                                           color: Colors.grey.shade500,
                                           fontSize: 11),
+                                    ),
+                                  ],
+                                  if (commentEdited) ...[
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'изм.',
+                                      style: TextStyle(
+                                          color: Colors.grey.shade400,
+                                          fontSize: 10,
+                                          fontStyle: FontStyle.italic),
                                     ),
                                   ],
                                 ],

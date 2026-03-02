@@ -310,6 +310,7 @@ class _ChatPageState extends State<ChatPage> {
     final type = data['type'] as String? ?? 'text';
     final mediaUrl = data['mediaUrl'] as String?;
     final message = data['message'] as String? ?? '';
+    final edited = data['edited'] as bool? ?? false;
     DateTime? time;
     if (data['timestamp'] != null) {
       time = (data['timestamp'] as Timestamp).toDate();
@@ -345,6 +346,7 @@ class _ChatPageState extends State<ChatPage> {
               type: type,
               mediaUrl: mediaUrl,
               time: time,
+              edited: edited,
             ),
           ),
         ],

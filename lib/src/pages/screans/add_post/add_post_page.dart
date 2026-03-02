@@ -26,9 +26,22 @@ class _AddPostPageState extends State<Add_Post_Page> {
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _descCtrl = TextEditingController();
 
+  String _mediaType = 'image'; // 'image' or 'video'
+
+  // Image
   File? _selectedFile;
   Uint8List? _selectedFileBytes;
+
+  // Video
+  File? _selectedVideoFile;
+  Uint8List? _selectedVideoBytes;
+  String _selectedVideoName = '';
+
   bool _isLoading = false;
+
+  bool get _hasMedia => _mediaType == 'image'
+      ? (_selectedFileBytes != null || _selectedFile != null)
+      : (_selectedVideoBytes != null || _selectedVideoFile != null);
 
   @override
   void dispose() {
@@ -37,10 +50,8 @@ class _AddPostPageState extends State<Add_Post_Page> {
     super.dispose();
   }
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-    );
+  Future<void> _pickImage() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result == null) return;
 
     img.Image cropToSquare(img.Image image) {
@@ -55,15 +66,32 @@ class _AddPostPageState extends State<Add_Post_Page> {
         _selectedFileBytes = result.files.single.bytes;
         final image = img.decodeImage(_selectedFileBytes!);
         if (image != null) {
-          _selectedFileBytes = Uint8List.fromList(
-              img.encodeJpg(cropToSquare(image)));
+          _selectedFileBytes =
+              Uint8List.fromList(img.encodeJpg(cropToSquare(image)));
         }
       } else {
         _selectedFile = File(result.files.single.path!);
         final image = img.decodeImage(_selectedFile!.readAsBytesSync());
         if (image != null) {
-          _selectedFile!.writeAsBytesSync(img.encodeJpg(cropToSquare(image)));
+          _selectedFile!
+              .writeAsBytesSync(img.encodeJpg(cropToSquare(image)));
         }
+      }
+    });
+  }
+
+  Future<void> _pickVideo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+      withData: kIsWeb,
+    );
+    if (result == null) return;
+    setState(() {
+      _selectedVideoName = result.files.single.name;
+      if (kIsWeb) {
+        _selectedVideoBytes = result.files.single.bytes;
+      } else {
+        _selectedVideoFile = File(result.files.single.path!);
       }
     });
   }
@@ -83,9 +111,12 @@ class _AddPostPageState extends State<Add_Post_Page> {
   }
 
   Future<void> _createPost() async {
-    if (_selectedFileBytes == null && _selectedFile == null) {
+    if (!_hasMedia) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Выберите изображение')),
+        SnackBar(
+            content: Text(_mediaType == 'image'
+                ? 'Выберите изображение'
+                : 'Выберите видео')),
       );
       return;
     }
@@ -98,11 +129,22 @@ class _AddPostPageState extends State<Add_Post_Page> {
 
     setState(() => _isLoading = true);
     try {
-      final fileName = 'post_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final imageUrl = await _uploadFile(
-        kIsWeb ? _selectedFileBytes! : _selectedFile!,
-        fileName,
-      );
+      String imageUrl = '';
+      String? videoUrl;
+
+      if (_mediaType == 'image') {
+        final fileName = 'post_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        imageUrl = await _uploadFile(
+            kIsWeb ? _selectedFileBytes! : _selectedFile!, fileName);
+      } else {
+        final ext = _selectedVideoName.contains('.')
+            ? _selectedVideoName.split('.').last
+            : 'mp4';
+        final fileName =
+            'post_video_${DateTime.now().millisecondsSinceEpoch}.$ext';
+        videoUrl = await _uploadFile(
+            kIsWeb ? _selectedVideoBytes! : _selectedVideoFile!, fileName);
+      }
 
       final post = Post(
         userId: FirebaseAuth.instance.currentUser!.uid,
@@ -110,6 +152,8 @@ class _AddPostPageState extends State<Add_Post_Page> {
         descPost: _descCtrl.text.trim(),
         imageUrl: imageUrl,
         timestamp: Timestamp.now(),
+        videoUrl: videoUrl,
+        mediaType: _mediaType,
       );
       await widget.postService.createPost(post);
 
@@ -132,8 +176,6 @@ class _AddPostPageState extends State<Add_Post_Page> {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = _selectedFileBytes != null || _selectedFile != null;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
@@ -177,20 +219,38 @@ class _AddPostPageState extends State<Add_Post_Page> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image picker
+            // Media type toggle
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  _typeButton('image', Icons.image_outlined, 'Фото'),
+                  _typeButton('video', Icons.videocam_outlined, 'Видео'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Media picker area
             GestureDetector(
-              onTap: _isLoading ? null : _pickFile,
+              onTap: _isLoading
+                  ? null
+                  : (_mediaType == 'image' ? _pickImage : _pickVideo),
               child: Container(
                 height: 260,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                      color: hasImage
+                      color: _hasMedia
                           ? Colors.transparent
                           : Colors.grey.shade300),
                   boxShadow: [
-                    if (hasImage)
+                    if (_hasMedia)
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 8,
@@ -199,36 +259,7 @@ class _AddPostPageState extends State<Add_Post_Page> {
                   ],
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: hasImage
-                    ? Stack(fit: StackFit.expand, children: [
-                        kIsWeb
-                            ? Image.memory(_selectedFileBytes!,
-                                fit: BoxFit.cover)
-                            : Image.file(_selectedFile!, fit: BoxFit.cover),
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.all(6),
-                            child: const Icon(Icons.edit,
-                                color: Colors.white, size: 18),
-                          ),
-                        ),
-                      ])
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add_photo_alternate_outlined,
-                              size: 56, color: Colors.grey.shade400),
-                          const SizedBox(height: 8),
-                          Text('Нажмите чтобы выбрать фото',
-                              style: TextStyle(color: Colors.grey.shade500)),
-                        ],
-                      ),
+                child: _buildMediaPreview(),
               ),
             ),
             const SizedBox(height: 16),
@@ -285,12 +316,133 @@ class _AddPostPageState extends State<Add_Post_Page> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
                   : const Text('Опубликовать',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _typeButton(String type, IconData icon, String label) {
+    final isSelected = _mediaType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() {
+          _mediaType = type;
+          // Clear previous selection when switching type
+          _selectedFile = null;
+          _selectedFileBytes = null;
+          _selectedVideoFile = null;
+          _selectedVideoBytes = null;
+          _selectedVideoName = '';
+        }),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color:
+                isSelected ? const Color(0xFF0071BC) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon,
+                  size: 18,
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.grey.shade600),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.grey.shade600,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediaPreview() {
+    if (_mediaType == 'image') {
+      if (!_hasMedia) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_photo_alternate_outlined,
+                size: 56, color: Colors.grey.shade400),
+            const SizedBox(height: 8),
+            Text('Нажмите чтобы выбрать фото',
+                style: TextStyle(color: Colors.grey.shade500)),
+          ],
+        );
+      }
+      return Stack(fit: StackFit.expand, children: [
+        kIsWeb
+            ? Image.memory(_selectedFileBytes!, fit: BoxFit.cover)
+            : Image.file(_selectedFile!, fit: BoxFit.cover),
+        Positioned(
+          bottom: 8,
+          right: 8,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.all(6),
+            child:
+                const Icon(Icons.edit, color: Colors.white, size: 18),
+          ),
+        ),
+      ]);
+    } else {
+      // Video
+      if (!_hasMedia) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.video_library_outlined,
+                size: 56, color: Colors.grey.shade400),
+            const SizedBox(height: 8),
+            Text('Нажмите чтобы выбрать видео',
+                style: TextStyle(color: Colors.grey.shade500)),
+          ],
+        );
+      }
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.videocam_rounded,
+              size: 56, color: Color(0xFF0071BC)),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              _selectedVideoName,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text('Видео готово к публикации',
+              style: TextStyle(
+                  color: Colors.grey.shade500, fontSize: 13)),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: _pickVideo,
+            icon: const Icon(Icons.swap_horiz_rounded),
+            label: const Text('Выбрать другое'),
+          ),
+        ],
+      );
+    }
   }
 }

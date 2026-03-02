@@ -6,6 +6,7 @@ class ChatBubble extends StatelessWidget {
   final String type;
   final String? mediaUrl;
   final DateTime? time;
+  final bool edited;
 
   const ChatBubble({
     super.key,
@@ -14,6 +15,7 @@ class ChatBubble extends StatelessWidget {
     this.type = 'text',
     this.mediaUrl,
     this.time,
+    this.edited = false,
   });
 
   @override
@@ -42,7 +44,7 @@ class ChatBubble extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withValues(alpha: 0.07),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -60,14 +62,29 @@ class ChatBubble extends StatelessWidget {
               height: 1.3,
             ),
           ),
-          if (time != null) ...[
+          if (time != null || edited) ...[
             const SizedBox(height: 4),
-            Text(
-              _formatTime(time!),
-              style: TextStyle(
-                fontSize: 10,
-                color: isMe ? Colors.white54 : Colors.grey.shade400,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (edited)
+                  Text(
+                    'изм. ',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                      color: isMe ? Colors.white54 : Colors.grey.shade400,
+                    ),
+                  ),
+                if (time != null)
+                  Text(
+                    _formatTime(time!),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isMe ? Colors.white54 : Colors.grey.shade400,
+                    ),
+                  ),
+              ],
             ),
           ],
         ],

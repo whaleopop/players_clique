@@ -47,6 +47,7 @@ dependencies:
   path: ^1.8.0
   shared_preferences: ^2.2.2
   firebase_app_check: ^0.3.0
+  video_player: ^2.9.2
 
 dev_dependencies:
   flutter_test:
