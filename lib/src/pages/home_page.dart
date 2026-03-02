@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:players_clique/src/icons/player_icon_icons.dart';
 import 'package:players_clique/src/services/auth/auth_service.dart';
@@ -21,7 +20,6 @@ class _MyHomePage extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    // Update presence immediately then every 3 minutes
     WidgetsBinding.instance.addPostFrameCallback((_) => _updatePresence());
     _presenceTimer =
         Timer.periodic(const Duration(minutes: 3), (_) => _updatePresence());
@@ -41,33 +39,101 @@ class _MyHomePage extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final bg = Theme.of(context).scaffoldBackgroundColor;
-    return Scaffold(
-      backgroundColor: bg,
-      bottomNavigationBar: CurvedNavigationBar(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
         backgroundColor: bg,
-        animationDuration: const Duration(milliseconds: 300),
-        color: const Color(0xFF0071BC),
-        buttonBackgroundColor: const Color(0xFF29ABE2),
-        height: 56,
-        index: _selectedIndex,
-        onTap: (index) {
-          setState(() => _selectedIndex = index);
-        },
-        items: const [
-          Icon(PlayerIcon.play_arrow_fill, color: Colors.white, size: 22),
-          Icon(PlayerIcon.settings_accessibility_fill,
-              color: Colors.white, size: 26),
-          Icon(PlayerIcon.chat_fill, color: Colors.white, size: 22),
-        ],
+        bottomNavigationBar: _buildNavBar(context),
+        body: GestureDetector(
+          onHorizontalDragUpdate: (_) {},
+          child: IndexedStack(
+            index: _selectedIndex,
+            children: const <Widget>[
+              Posts_Page(),
+              Profile_Page(),
+              Message_Page(),
+            ],
+          ),
+        ),
       ),
-      body: GestureDetector(
-        onHorizontalDragUpdate: (_) {},
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: <Widget>[
-            Posts_Page(),
-            Profile_Page(),
-            Message_Page(),
+    );
+  }
+
+  Widget _buildNavBar(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _navItem(context, 0, PlayerIcon.play_arrow_fill, 'Лента'),
+            _navItem(context, 1, PlayerIcon.settings_accessibility_fill, 'Профиль'),
+            _navItem(context, 2, PlayerIcon.chat_fill, 'Чат'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(BuildContext context, int index, IconData icon, String label) {
+    final isSelected = _selectedIndex == index;
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedIndex = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 18 : 14,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF0071BC) : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: isSelected
+                  ? Colors.white
+                  : cs.onSurface.withValues(alpha: 0.45),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: isSelected
+                  ? Row(
+                      children: [
+                        const SizedBox(width: 6),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         ),
       ),
