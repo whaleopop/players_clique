@@ -69,6 +69,41 @@ class _MusicPageState extends State<Music_Page> {
     );
   }
 
+  final _tokenController = TextEditingController();
+
+  Future<void> _saveTokenFromInput() async {
+    final raw = _tokenController.text.trim();
+    if (raw.isEmpty) return;
+
+    String? token;
+    // Если вставили полную ссылку — извлекаем токен из fragment
+    if (raw.contains('access_token=')) {
+      final fragment = Uri.parse(raw).fragment;
+      final params = Uri.splitQueryString(fragment);
+      token = params['access_token'];
+    } else {
+      token = raw;
+    }
+
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось извлечь токен из ссылки')),
+      );
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+    _tokenController.clear();
+    setState(() => _token = token);
+  }
+
+  @override
+  void dispose() {
+    _tokenController.dispose();
+    super.dispose();
+  }
+
   Widget _buildLogin(ColorScheme cs) {
     return Center(
       child: Column(
@@ -89,10 +124,45 @@ class _MusicPageState extends State<Music_Page> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Нажми на логотип для входа',
+            'Нажми на логотип для входа через OAuth',
             style: TextStyle(
               fontSize: 14,
               color: cs.onSurface.withValues(alpha: 0.45),
+            ),
+          ),
+          const SizedBox(height: 28),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: TextField(
+              controller: _tokenController,
+              decoration: InputDecoration(
+                hintText: 'Или вставь токен / ссылку',
+                hintStyle: TextStyle(
+                  fontSize: 13,
+                  color: cs.onSurface.withValues(alpha: 0.35),
+                ),
+                filled: true,
+                fillColor: cs.onSurface.withValues(alpha: 0.06),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: cs.onSurface.withValues(alpha: 0.1)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: cs.onSurface.withValues(alpha: 0.1)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFFC3F1D)),
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.check_rounded, color: Color(0xFFFC3F1D)),
+                  onPressed: _saveTokenFromInput,
+                ),
+              ),
+              style: TextStyle(fontSize: 13, color: cs.onSurface),
+              onSubmitted: (_) => _saveTokenFromInput(),
             ),
           ),
         ],
