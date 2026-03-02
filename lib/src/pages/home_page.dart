@@ -83,9 +83,9 @@ class _MyHomePage extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _navItem(context, 0, PlayerIcon.play_arrow_fill, 'Лента'),
-            _navItem(context, 1, Icons.music_note_rounded, 'Музыка'),
-            _navItem(context, 2, PlayerIcon.settings_accessibility_fill, 'Профиль'),
-            _navItem(context, 3, PlayerIcon.chat_fill, 'Чат'),
+            _navItem(context, 3, Icons.music_note_rounded, 'Музыка'),
+            _navItem(context, 1, PlayerIcon.settings_accessibility_fill, 'Профиль'),
+            _navItem(context, 2, PlayerIcon.chat_fill, 'Чат'),
             
           ],
         ),
