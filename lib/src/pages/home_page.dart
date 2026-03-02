@@ -60,13 +60,16 @@ class _MyHomePage extends State<MyHomePage> {
           Icon(PlayerIcon.chat_fill, color: Colors.white, size: 22),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: <Widget>[
-          Posts_Page(),
-          Profile_Page(),
-          Message_Page(),
-        ],
+      body: GestureDetector(
+        onHorizontalDragUpdate: (_) {},
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: <Widget>[
+            Posts_Page(),
+            Profile_Page(),
+            Message_Page(),
+          ],
+        ),
       ),
     );
   }
