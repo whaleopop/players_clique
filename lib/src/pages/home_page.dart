@@ -5,6 +5,7 @@ import 'package:players_clique/src/services/auth/auth_service.dart';
 import 'package:provider/provider.dart';
 
 import 'package:players_clique/src/pages/screans/message_page.dart';
+import 'package:players_clique/src/pages/screans/music_page.dart';
 import 'package:players_clique/src/pages/screans/posts_page.dart';
 import 'package:players_clique/src/pages/screans/profile_page.dart';
 
@@ -52,6 +53,7 @@ class _MyHomePage extends State<MyHomePage> {
               Posts_Page(),
               Profile_Page(),
               Message_Page(),
+              Music_Page(),
             ],
           ),
         ),
@@ -83,6 +85,7 @@ class _MyHomePage extends State<MyHomePage> {
             _navItem(context, 0, PlayerIcon.play_arrow_fill, 'Лента'),
             _navItem(context, 1, PlayerIcon.settings_accessibility_fill, 'Профиль'),
             _navItem(context, 2, PlayerIcon.chat_fill, 'Чат'),
+            _navItem(context, 3, Icons.music_note_rounded, 'Музыка'),
           ],
         ),
       ),
