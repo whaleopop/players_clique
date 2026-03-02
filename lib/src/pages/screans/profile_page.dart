@@ -18,6 +18,7 @@ import '../../services/auth/auth_service.dart';
 import '../../services/cache/cache.dart';
 import '../../services/post/post_service.dart';
 import 'add_post/add_post_page.dart';
+import 'profile_sub_screen/profile_player.dart';
 
 
 class Profile_Page extends StatefulWidget {
@@ -482,25 +483,18 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                           stream: _userStream,
                           builder: (context, snapshot) {
                             final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
-                            final count = (data['friends'] as List<dynamic>? ?? []).length;
-                            return _statItem('$count', 'Друзья');
+                            final friends = (data['friends'] as List<dynamic>? ?? []).cast<String>();
+                            return GestureDetector(
+                              onTap: friends.isNotEmpty ? () => _openFriendsList(friends) : null,
+                              child: _statItem('${friends.length}', 'Друзья'),
+                            );
                           },
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Кнопки Edit / Share
-                    Row(
-                      children: [
-                        Expanded(
-                          child: BlueButton(onTap: () {}, text: 'Редактировать', width: double.infinity),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: BlueButton(onTap: () {}, text: 'Поделиться', width: double.infinity),
-                        ),
-                      ],
-                    ),
+                    // Кнопка Edit
+                    BlueButton(onTap: _openEditProfile, text: 'Редактировать', width: double.infinity),
                     const SizedBox(height: 12),
                     // Иконки выход / добавить пост
                     Row(
@@ -564,6 +558,82 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     );
   }
 
+  void _openFriendsList(List<String> friendUids) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.5,
+        maxChildSize: 0.9,
+        builder: (_, ctrl) => Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('Друзья', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                controller: ctrl,
+                itemCount: friendUids.length,
+                itemBuilder: (context, i) => _FriendTile(uid: friendUids[i]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEditProfile() async {
+    final currentFio = await _fioFuture;
+    if (!mounted) return;
+    final fioCtrl = TextEditingController(text: currentFio ?? '');
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Редактировать профиль'),
+        content: TextField(
+          controller: fioCtrl,
+          decoration: const InputDecoration(labelText: 'Имя'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0071BC)),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              if (_currentUid == null) return;
+              final newFio = fioCtrl.text.trim();
+              if (newFio.isEmpty) return;
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(_currentUid)
+                  .update({'fio': newFio});
+              if (mounted) setState(() => _fioFuture = Future.value(newFio));
+            },
+            child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _statItem(String value, String label) {
     return Column(
       children: [
@@ -597,5 +667,58 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     );
   }
 
+}
+
+class _FriendTile extends StatefulWidget {
+  final String uid;
+  const _FriendTile({required this.uid});
+
+  @override
+  State<_FriendTile> createState() => _FriendTileState();
+}
+
+class _FriendTileState extends State<_FriendTile> {
+  String? _name;
+  String? _photo;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final doc = await FirebaseFirestore.instance.collection('users').doc(widget.uid).get();
+    if (mounted && doc.exists) {
+      final d = doc.data()!;
+      setState(() {
+        _name = d['fio'] as String? ?? d['email'] as String?;
+        _photo = d['photourl'] as String?;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage: (_photo != null && _photo!.isNotEmpty)
+            ? NetworkImage(_photo!) as ImageProvider
+            : null,
+        backgroundColor: Colors.lightBlue.shade100,
+        child: (_photo == null || _photo!.isEmpty)
+            ? const Icon(Icons.person, color: Colors.white)
+            : null,
+      ),
+      title: Text(_name ?? '...'),
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => Profile_Player(uid: widget.uid)),
+        );
+      },
+    );
+  }
 }
 
