@@ -40,7 +40,7 @@ class _MusicPageState extends State<Music_Page> {
   }
 
   Future<void> _openOAuth() async {
-    await launchUrl(Uri.parse(_oauthUrl), mode: LaunchMode.externalApplication);
+    await launchUrl(Uri.parse(_oauthUrl), mode: LaunchMode.inAppBrowserView);
   }
 
   Future<void> _saveTokenFromInput() async {
