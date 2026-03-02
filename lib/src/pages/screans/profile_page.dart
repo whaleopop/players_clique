@@ -17,6 +17,7 @@ import 'package:image/image.dart' as img;
 import '../../services/auth/auth_service.dart';
 import '../../services/cache/cache.dart';
 import '../../services/post/post_service.dart';
+import '../../services/theme/theme_service.dart';
 import 'add_post/add_post_page.dart';
 import 'profile_sub_screen/profile_player.dart';
 import '../../components/posts/comments_sheet.dart';
@@ -459,11 +460,19 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                     // Кнопка Edit
                     BlueButton(onTap: _openEditProfile, text: 'Редактировать', width: double.infinity),
                     const SizedBox(height: 12),
-                    // Иконки выход / добавить пост
+                    // Иконки выход / тема / добавить пост
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _iconBtn(icon: PlayerIcon.logout_fill, onTap: signOut),
+                        Consumer<ThemeService>(
+                          builder: (context, themeService, _) => _iconBtn(
+                            icon: themeService.isDark
+                                ? Icons.light_mode_outlined
+                                : Icons.dark_mode_outlined,
+                            onTap: themeService.toggle,
+                          ),
+                        ),
                         _iconBtn(
                           icon: PlayerIcon.post_add,
                           onTap: () => Navigator.push(
