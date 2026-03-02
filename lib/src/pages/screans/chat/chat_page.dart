@@ -65,6 +65,7 @@ class _ChatPageState extends State<ChatPage> {
   bool _isSending = false;
   String? _avatarUrl;
   String? _displayName;
+  Map<String, dynamic>? _replyToData; // {id, text, senderName}
 
   String get _chatRoomId {
     final ids = [widget.receiverUserID, _firebaseAuth.currentUser!.uid]..sort();
@@ -110,9 +111,19 @@ class _ChatPageState extends State<ChatPage> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
     _messageController.clear();
-    setState(() => _isSending = true);
+    final reply = _replyToData;
+    setState(() {
+      _isSending = true;
+      _replyToData = null;
+    });
     try {
-      await _chatService.sendMessage(widget.receiverUserID, text);
+      await _chatService.sendMessage(
+        widget.receiverUserID,
+        text,
+        replyToId: reply?['id'] as String?,
+        replyToText: reply?['text'] as String?,
+        replyToSenderName: reply?['senderName'] as String?,
+      );
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -143,7 +154,7 @@ class _ChatPageState extends State<ChatPage> {
     await _chatService.sendStickerMessage(widget.receiverUserID, assetPath);
   }
 
-  void _showMessageOptions(DocumentSnapshot doc, String type, String message) {
+  void _showMessageOptions(DocumentSnapshot doc, String type, String message, bool isMe) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -154,7 +165,21 @@ class _ChatPageState extends State<ChatPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            if (type == 'text')
+            ListTile(
+              leading: const Icon(Icons.reply_outlined, color: Color(0xFF0071BC)),
+              title: const Text('Ответить'),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                setState(() {
+                  _replyToData = {
+                    'id': doc.id,
+                    'text': type == 'image' ? '📷 Фото' : message,
+                    'senderName': isMe ? 'Вы' : (_displayName ?? 'Пользователь'),
+                  };
+                });
+              },
+            ),
+            if (isMe && type == 'text')
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
                 title: const Text('Редактировать'),
@@ -163,15 +188,16 @@ class _ChatPageState extends State<ChatPage> {
                   _editMessage(doc, message);
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Удалить',
-                  style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(sheetCtx);
-                _deleteMessage(doc);
-              },
-            ),
+            if (isMe)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Удалить',
+                    style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _deleteMessage(doc);
+                },
+              ),
             const SizedBox(height: 8),
           ],
         ),
@@ -235,9 +261,10 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0071BC),
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         titleSpacing: 0,
+        elevation: 0.5,
         title: GestureDetector(
           onTap: () => Navigator.push(
             context,
@@ -265,11 +292,11 @@ class _ChatPageState extends State<ChatPage> {
             ],
           ),
         ),
-        elevation: 0,
       ),
       body: Column(
         children: [
           Expanded(child: _buildMessageList()),
+          if (_replyToData != null) _buildReplyBar(),
           _buildInputBar(),
           if (_showStickers) _buildStickerPanel(),
         ],
@@ -337,9 +364,7 @@ class _ChatPageState extends State<ChatPage> {
           ],
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onLongPress: isMe
-                ? () => _showMessageOptions(document, type, message)
-                : null,
+            onLongPress: () => _showMessageOptions(document, type, message, isMe),
             child: ChatBubble(
               message: message,
               isMe: isMe,
@@ -347,7 +372,54 @@ class _ChatPageState extends State<ChatPage> {
               mediaUrl: mediaUrl,
               time: time,
               edited: edited,
+              replyToText: data['replyToText'] as String?,
+              replyToSenderName: data['replyToSenderName'] as String?,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplyBar() {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      color: cs.surface,
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      child: Row(
+        children: [
+          Container(width: 3, height: 36, color: const Color(0xFF0071BC)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _replyToData!['senderName'] as String,
+                  style: const TextStyle(
+                    color: Color(0xFF0071BC),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  _replyToData!['text'] as String,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, size: 18, color: cs.onSurface.withValues(alpha: 0.5)),
+            onPressed: () => setState(() => _replyToData = null),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
         ],
       ),

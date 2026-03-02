@@ -16,7 +16,13 @@ class ChatService extends ChangeNotifier {
     return ids.join('_');
   }
 
-  Future<void> sendMessage(String receiverId, String message) async {
+  Future<void> sendMessage(
+    String receiverId,
+    String message, {
+    String? replyToId,
+    String? replyToText,
+    String? replyToSenderName,
+  }) async {
     final currentUserId = _firebaseAuth.currentUser!.uid;
     final currentUserEmail = _firebaseAuth.currentUser!.email.toString();
     final timestamp = Timestamp.now();
@@ -31,10 +37,17 @@ class ChatService extends ChangeNotifier {
       type: 'text',
     );
 
+    final msgMap = newMessage.toMap();
+    if (replyToId != null) {
+      msgMap['replyToId'] = replyToId;
+      msgMap['replyToText'] = replyToText;
+      msgMap['replyToSenderName'] = replyToSenderName;
+    }
+
     final batch = _firestore.batch();
     batch.set(
       _firestore.collection('chat_rooms').doc(chatRoomId).collection('messages').doc(),
-      newMessage.toMap(),
+      msgMap,
     );
     batch.set(
       _firestore.collection('chat_rooms').doc(chatRoomId),

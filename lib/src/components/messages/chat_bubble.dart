@@ -7,6 +7,8 @@ class ChatBubble extends StatelessWidget {
   final String? mediaUrl;
   final DateTime? time;
   final bool edited;
+  final String? replyToText;
+  final String? replyToSenderName;
 
   const ChatBubble({
     super.key,
@@ -16,6 +18,8 @@ class ChatBubble extends StatelessWidget {
     this.mediaUrl,
     this.time,
     this.edited = false,
+    this.replyToText,
+    this.replyToSenderName,
   });
 
   @override
@@ -55,6 +59,50 @@ class ChatBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (replyToText != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              margin: const EdgeInsets.only(bottom: 6),
+              decoration: BoxDecoration(
+                color: isMe
+                    ? Colors.white.withValues(alpha: 0.18)
+                    : cs.onSurface.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(8),
+                border: Border(
+                  left: BorderSide(
+                    color: isMe ? Colors.white70 : const Color(0xFF0071BC),
+                    width: 3,
+                  ),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (replyToSenderName != null)
+                    Text(
+                      replyToSenderName!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isMe ? Colors.white70 : const Color(0xFF0071BC),
+                      ),
+                    ),
+                  Text(
+                    replyToText!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isMe
+                          ? Colors.white60
+                          : cs.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Text(
             message,
             style: TextStyle(
