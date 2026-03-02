@@ -35,8 +35,6 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
       []; // State variable for filtered users
   final CacheService cacheService = CacheService();
 
-  late Future<String?> _fioFuture;
-  late Future<String?> _photoFuture;
   late Stream<DocumentSnapshot> _userStream;
   late Stream<QuerySnapshot> _postsStream;
   String? _currentUid;
@@ -44,8 +42,6 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
   @override
   void initState() {
     super.initState();
-    _fioFuture = loadUserField("fio");
-    _photoFuture = loadUserField("photourl");
     final authService = Provider.of<AuthService>(context, listen: false);
     _currentUid = authService.getCurrentUserUid();
     _userStream = _currentUid != null
@@ -399,10 +395,11 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                     // Аватар
                     Stack(
                       children: [
-                        FutureBuilder(
-                          future: _photoFuture,
-                          builder: (context, AsyncSnapshot<String?> snapshot) {
-                            final url = snapshot.data ?? '';
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: _userStream,
+                          builder: (context, snapshot) {
+                            final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+                            final url = data['photourl'] as String? ?? '';
                             return CircleAvatar(
                               radius: 60,
                               backgroundColor: Colors.lightBlue.shade100,
@@ -455,11 +452,13 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                     ),
                     const SizedBox(height: 14),
                     // Имя
-                    FutureBuilder(
-                      future: _fioFuture,
-                      builder: (context, AsyncSnapshot<String?> snapshot) {
+                    StreamBuilder<DocumentSnapshot>(
+                      stream: _userStream,
+                      builder: (context, snapshot) {
+                        final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+                        final fio = data['fio'] as String? ?? '';
                         return Text(
-                          snapshot.data ?? '',
+                          fio,
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 20,
@@ -596,9 +595,10 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
   }
 
   Future<void> _openEditProfile() async {
-    final currentFio = await _fioFuture;
+    if (_currentUid == null) return;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(_currentUid).get();
     if (!mounted) return;
-    final fioCtrl = TextEditingController(text: currentFio ?? '');
+    final fioCtrl = TextEditingController(text: doc.data()?['fio'] as String? ?? '');
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -625,7 +625,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                   .collection('users')
                   .doc(_currentUid)
                   .update({'fio': newFio});
-              if (mounted) setState(() => _fioFuture = Future.value(newFio));
+              // stream auto-updates the name display
             },
             child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
           ),
