@@ -54,7 +54,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => SafeArea(
+      builder: (sheetCtx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -63,7 +63,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
               leading: const Icon(Icons.edit_outlined),
               title: const Text('Редактировать'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetCtx);
                 _editComment(doc, text);
               },
             ),
@@ -73,7 +73,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
               title: const Text('Удалить',
                   style: TextStyle(color: Colors.red)),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetCtx);
                 _commentsRef.doc(doc.id).delete();
               },
             ),

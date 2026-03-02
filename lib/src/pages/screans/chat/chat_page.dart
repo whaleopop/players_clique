@@ -149,7 +149,7 @@ class _ChatPageState extends State<ChatPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => SafeArea(
+      builder: (sheetCtx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -159,7 +159,7 @@ class _ChatPageState extends State<ChatPage> {
                 leading: const Icon(Icons.edit_outlined),
                 title: const Text('Редактировать'),
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pop(sheetCtx);
                   _editMessage(doc, message);
                 },
               ),
@@ -168,7 +168,7 @@ class _ChatPageState extends State<ChatPage> {
               title: const Text('Удалить',
                   style: TextStyle(color: Colors.red)),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetCtx);
                 _deleteMessage(doc);
               },
             ),
@@ -335,6 +335,7 @@ class _ChatPageState extends State<ChatPage> {
             const SizedBox(width: 6),
           ],
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onLongPress: isMe
                 ? () => _showMessageOptions(document, type, message)
                 : null,
