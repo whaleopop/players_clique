@@ -48,6 +48,79 @@ class _CommentsSheetState extends State<CommentsSheet> {
     });
   }
 
+  void _showCommentOptions(QueryDocumentSnapshot doc, String text) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Редактировать'),
+              onTap: () {
+                Navigator.pop(context);
+                _editComment(doc, text);
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Удалить',
+                  style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _commentsRef.doc(doc.id).delete();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editComment(QueryDocumentSnapshot doc, String currentText) {
+    final ctrl = TextEditingController(text: currentText);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Редактировать комментарий'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: 4,
+          minLines: 1,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0071BC)),
+            onPressed: () async {
+              Navigator.pop(context);
+              final newText = ctrl.text.trim();
+              if (newText.isEmpty) return;
+              await _commentsRef.doc(doc.id).update({'text': newText});
+            },
+            child: const Text('Сохранить',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -102,7 +175,12 @@ class _CommentsSheetState extends State<CommentsSheet> {
                   if (d['timestamp'] != null) {
                     time = (d['timestamp'] as Timestamp).toDate();
                   }
-                  return Padding(
+                  final isOwner = d['userId'] == _currentUid;
+                  return GestureDetector(
+                    onLongPress: isOwner
+                        ? () => _showCommentOptions(docs[i], text)
+                        : null,
+                    child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,7 +227,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
                         ),
                       ],
                     ),
-                  );
+                  ),   // closes Padding
+                  );   // closes GestureDetector
                 },
               );
             },

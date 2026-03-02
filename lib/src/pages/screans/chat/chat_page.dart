@@ -66,6 +66,11 @@ class _ChatPageState extends State<ChatPage> {
   String? _avatarUrl;
   String? _displayName;
 
+  String get _chatRoomId {
+    final ids = [widget.receiverUserID, _firebaseAuth.currentUser!.uid]..sort();
+    return ids.join('_');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -136,6 +141,93 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _sendSticker(String assetPath) async {
     setState(() => _showStickers = false);
     await _chatService.sendStickerMessage(widget.receiverUserID, assetPath);
+  }
+
+  void _showMessageOptions(DocumentSnapshot doc, String type, String message) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            if (type == 'text')
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Редактировать'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editMessage(doc, message);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Удалить',
+                  style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteMessage(doc);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editMessage(DocumentSnapshot doc, String currentText) {
+    final ctrl = TextEditingController(text: currentText);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Редактировать сообщение'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: 4,
+          minLines: 1,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0071BC)),
+            onPressed: () async {
+              Navigator.pop(context);
+              final newText = ctrl.text.trim();
+              if (newText.isEmpty || newText == currentText) return;
+              await FirebaseFirestore.instance
+                  .collection('chat_rooms')
+                  .doc(_chatRoomId)
+                  .collection('messages')
+                  .doc(doc.id)
+                  .update({'message': newText, 'edited': true});
+            },
+            child: const Text('Сохранить',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteMessage(DocumentSnapshot doc) async {
+    await FirebaseFirestore.instance
+        .collection('chat_rooms')
+        .doc(_chatRoomId)
+        .collection('messages')
+        .doc(doc.id)
+        .delete();
   }
 
   @override
@@ -242,12 +334,17 @@ class _ChatPageState extends State<ChatPage> {
             ),
             const SizedBox(width: 6),
           ],
-          ChatBubble(
-            message: message,
-            isMe: isMe,
-            type: type,
-            mediaUrl: mediaUrl,
-            time: time,
+          GestureDetector(
+            onLongPress: isMe
+                ? () => _showMessageOptions(document, type, message)
+                : null,
+            child: ChatBubble(
+              message: message,
+              isMe: isMe,
+              type: type,
+              mediaUrl: mediaUrl,
+              time: time,
+            ),
           ),
         ],
       ),
