@@ -48,7 +48,7 @@ class _MyHomePage extends State<MyHomePage> {
           onHorizontalDragUpdate: (_) {},
           child: IndexedStack(
             index: _selectedIndex,
-            children: const <Widget>[
+            children: <Widget>[
               Posts_Page(),
               Profile_Page(),
               Message_Page(),
