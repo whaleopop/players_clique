@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 const _oauthUrl =
     'https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d';
@@ -33,105 +33,15 @@ class _MusicPageState extends State<Music_Page> {
   }
 
   Future<void> _openOAuth() async {
-    final uri = Uri.parse(_oauthUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-    // После открытия браузера показываем диалог вставки токена
-    if (mounted) _showTokenDialog();
-  }
-
-  Future<void> _showTokenDialog() async {
-    final controller = TextEditingController();
-    final cs = Theme.of(context).colorScheme;
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Вставить токен',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: cs.onSurface,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Скопируй access_token из адресной строки браузера после авторизации',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: cs.onSurface.withValues(alpha: 0.55),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                maxLines: 3,
-                style: TextStyle(color: cs.onSurface, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'AQAAAAxxx...',
-                  hintStyle: TextStyle(color: cs.onSurface.withValues(alpha: 0.35)),
-                  filled: true,
-                  fillColor: cs.onSurface.withValues(alpha: 0.06),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(Icons.content_paste_rounded, color: cs.onSurface.withValues(alpha: 0.5)),
-                    onPressed: () async {
-                      final data = await Clipboard.getData('text/plain');
-                      if (data?.text != null) controller.text = data!.text!;
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFFC3F1D),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: () async {
-                    final token = controller.text.trim();
-                    if (token.isEmpty) return;
-                    final nav = Navigator.of(ctx);
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.setString(_tokenKey, token);
-                    if (mounted) {
-                      nav.pop();
-                      setState(() => _token = token);
-                    }
-                  },
-                  child: const Text('Сохранить', style: TextStyle(fontSize: 16)),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const _OAuthWebView()),
     );
+    if (result != null && mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, result);
+      setState(() => _token = result);
+    }
   }
 
   Future<void> _logout() async {
@@ -166,32 +76,7 @@ class _MusicPageState extends State<Music_Page> {
         children: [
           GestureDetector(
             onTap: _openOAuth,
-            child: Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFC3F1D),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFC3F1D).withValues(alpha: 0.4),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Text(
-                  'Я',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 64,
-                    fontWeight: FontWeight.bold,
-                    height: 1,
-                  ),
-                ),
-              ),
-            ),
+            child: _yandexLogo(),
           ),
           const SizedBox(height: 20),
           const Text(
@@ -210,53 +95,21 @@ class _MusicPageState extends State<Music_Page> {
               color: cs.onSurface.withValues(alpha: 0.45),
             ),
           ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: _showTokenDialog,
-            icon: const Icon(Icons.vpn_key_rounded, size: 18),
-            label: const Text('Вставить токен вручную'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFFFC3F1D),
-              side: const BorderSide(color: Color(0xFFFC3F1D)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildConnected(ColorScheme cs) {
+    final shortToken = _token!.length > 20
+        ? '${_token!.substring(0, 10)}...${_token!.substring(_token!.length - 6)}'
+        : _token!;
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFC3F1D),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFC3F1D).withValues(alpha: 0.4),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Text(
-                'Я',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 64,
-                  fontWeight: FontWeight.bold,
-                  height: 1,
-                ),
-              ),
-            ),
-          ),
+          _yandexLogo(),
           const SizedBox(height: 20),
           const Text(
             'Яндекс Музыка',
@@ -266,7 +119,7 @@ class _MusicPageState extends State<Music_Page> {
               color: Color(0xFFFC3F1D),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -282,7 +135,46 @@ class _MusicPageState extends State<Music_Page> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          // Карточка с токеном
+          GestureDetector(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: _token!));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Токен скопирован'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: cs.onSurface.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.onSurface.withValues(alpha: 0.1)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.vpn_key_rounded, size: 16, color: Color(0xFFFC3F1D)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      shortToken,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                        color: cs.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.copy_rounded, size: 14, color: cs.onSurface.withValues(alpha: 0.35)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Text(
             'щщщщщ узбеки спят',
             style: TextStyle(
@@ -290,7 +182,7 @@ class _MusicPageState extends State<Music_Page> {
               color: cs.onSurface.withValues(alpha: 0.5),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           TextButton.icon(
             onPressed: _logout,
             icon: Icon(Icons.logout_rounded, size: 16, color: cs.onSurface.withValues(alpha: 0.4)),
@@ -299,6 +191,112 @@ class _MusicPageState extends State<Music_Page> {
               style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _yandexLogo() {
+    return Container(
+      width: 110,
+      height: 110,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFC3F1D),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFC3F1D).withValues(alpha: 0.4),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: const Center(
+        child: Text(
+          'Я',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 64,
+            fontWeight: FontWeight.bold,
+            height: 1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── OAuth WebView ─────────────────────────────────────────────────────────────
+
+class _OAuthWebView extends StatefulWidget {
+  const _OAuthWebView();
+
+  @override
+  State<_OAuthWebView> createState() => _OAuthWebViewState();
+}
+
+class _OAuthWebViewState extends State<_OAuthWebView> {
+  late final WebViewController _controller;
+  bool _pageLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageStarted: (url) {
+          _tryExtractToken(url);
+          if (mounted) setState(() => _pageLoading = true);
+        },
+        onPageFinished: (url) {
+          _tryExtractToken(url);
+          if (mounted) setState(() => _pageLoading = false);
+        },
+        onNavigationRequest: (request) {
+          _tryExtractToken(request.url);
+          return NavigationDecision.navigate;
+        },
+      ))
+      ..loadRequest(Uri.parse(_oauthUrl));
+  }
+
+  void _tryExtractToken(String url) {
+    if (!url.contains('access_token=')) return;
+
+    // Токен находится в fragment (#), парсим как query-параметры
+    final fragment = Uri.parse(url).fragment;
+    final params = Uri.splitQueryString(fragment);
+    final token = params['access_token'];
+
+    if (token != null && token.isNotEmpty && mounted) {
+      Navigator.pop(context, token);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: cs.surface,
+        foregroundColor: cs.onSurface,
+        elevation: 0.5,
+        title: const Text('Войти в Яндекс', style: TextStyle(fontSize: 17)),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          if (_pageLoading)
+            const LinearProgressIndicator(
+              color: Color(0xFFFC3F1D),
+              backgroundColor: Colors.transparent,
+            ),
         ],
       ),
     );
