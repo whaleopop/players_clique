@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../icons/player_icon_icons.dart';
 import '../../services/auth/auth_service.dart';
 import '../../../src/pages/screans/profile_sub_screen/profile_player.dart';
 import 'comments_sheet.dart';
@@ -212,8 +213,8 @@ class _LentaPostState extends State<LentaPost> {
                           onPressed: () => _toggleLike(likedBy),
                           icon: Icon(
                             isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
+                                ? PlayerIcon.favorite_fill
+                                : PlayerIcon.favorite,
                             color: isLiked ? Colors.red : Colors.grey.shade600,
                           ),
                           visualDensity: VisualDensity.compact,
