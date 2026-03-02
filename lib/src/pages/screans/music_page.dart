@@ -324,7 +324,10 @@ class _OAuthWebViewState extends State<_OAuthWebView> {
           if (mounted) setState(() => _pageLoading = false);
         },
         onNavigationRequest: (request) {
-          _tryExtractToken(request.url);
+          if (request.url.contains('access_token=')) {
+            _tryExtractToken(request.url);
+            return NavigationDecision.prevent;
+          }
           return NavigationDecision.navigate;
         },
       ))
