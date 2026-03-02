@@ -148,7 +148,7 @@ class _Posts_Page extends State<Posts_Page> with AutomaticKeepAliveClientMixin {
                             namePost: data['namePost'] ?? '',
                             descPost: data['descPost'] ?? '',
                             userId: data['userId'] ?? '',
-                            onTap: () {},
+                            postId: _posts[index].id,
                           ),
                         );
                       },

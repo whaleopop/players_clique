@@ -19,6 +19,7 @@ import '../../services/cache/cache.dart';
 import '../../services/post/post_service.dart';
 import 'add_post/add_post_page.dart';
 import 'profile_sub_screen/profile_player.dart';
+import '../../components/posts/comments_sheet.dart';
 
 
 class Profile_Page extends StatefulWidget {
@@ -219,76 +220,23 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
   }
 
   void _showPostDetail(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    showDialog(
+    if (_currentUid == null) return;
+    showModalBottomSheet(
       context: context,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.network(
-                data['imageUrl'] ?? '',
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox(
-                  height: 120,
-                  child: Center(child: Icon(Icons.broken_image_outlined, size: 48, color: Colors.grey)),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      data['namePost'] ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                  ),
-                  // Меню
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    onSelected: (value) {
-                      Navigator.of(context).pop();
-                      if (value == 'edit') _openEditDialog(doc);
-                      if (value == 'delete') _confirmDelete(doc);
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(children: [
-                          Icon(Icons.edit_outlined, size: 20),
-                          SizedBox(width: 8),
-                          Text('Редактировать'),
-                        ]),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(children: [
-                          Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Удалить', style: TextStyle(color: Colors.red)),
-                        ]),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if ((data['descPost'] as String? ?? '').isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: Text(data['descPost'], style: const TextStyle(fontSize: 14)),
-              ),
-            const SizedBox(height: 8),
-          ],
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        maxChildSize: 0.95,
+        builder: (sheetCtx, ctrl) => _PostOwnerSheet(
+          doc: doc,
+          postOwnerId: _currentUid!,
+          scrollController: ctrl,
+          onEdit: () => _openEditDialog(doc),
+          onDelete: () => _confirmDelete(doc),
         ),
       ),
     );
@@ -718,6 +666,243 @@ class _FriendTileState extends State<_FriendTile> {
           MaterialPageRoute(builder: (_) => Profile_Player(uid: widget.uid)),
         );
       },
+    );
+  }
+}
+
+// ── Post detail sheet (owner view) ──────────────────────────────────────────
+
+class _PostOwnerSheet extends StatelessWidget {
+  final DocumentSnapshot doc;
+  final String postOwnerId;
+  final ScrollController scrollController;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _PostOwnerSheet({
+    required this.doc,
+    required this.postOwnerId,
+    required this.scrollController,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  DocumentReference get _postRef => FirebaseFirestore.instance
+      .collection('posts')
+      .doc(postOwnerId)
+      .collection('post')
+      .doc(doc.id);
+
+  void _openComments(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.95,
+        builder: (_, ctrl) => CommentsSheet(
+          postOwnerId: postOwnerId,
+          postId: doc.id,
+          scrollController: ctrl,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final initialData = doc.data() as Map<String, dynamic>;
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _postRef.snapshots(),
+      builder: (context, postSnap) {
+        final data =
+            postSnap.data?.data() as Map<String, dynamic>? ?? initialData;
+        final likedBy =
+            (data['likedBy'] as List<dynamic>? ?? []).cast<String>();
+
+        return StreamBuilder<QuerySnapshot>(
+          stream: _postRef.collection('comments').snapshots(),
+          builder: (context, commSnap) {
+            final commentCount = commSnap.data?.docs.length ?? 0;
+
+            return SingleChildScrollView(
+              controller: scrollController,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Square image
+                  AspectRatio(
+                    aspectRatio: 1.0,
+                    child: Image.network(
+                      data['imageUrl'] ?? '',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey.shade100,
+                        child: const Center(
+                          child: Icon(Icons.broken_image_outlined,
+                              size: 48, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Title + popup menu
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 8, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            data['namePost'] ?? '',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          onSelected: (value) {
+                            Navigator.of(context).pop();
+                            if (value == 'edit') onEdit();
+                            if (value == 'delete') onDelete();
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(children: [
+                                Icon(Icons.edit_outlined, size: 20),
+                                SizedBox(width: 8),
+                                Text('Редактировать'),
+                              ]),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(children: [
+                                Icon(Icons.delete_outline,
+                                    size: 20, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Удалить',
+                                    style: TextStyle(color: Colors.red)),
+                              ]),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Description
+                  if ((data['descPost'] as String? ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                      child: Text(data['descPost'],
+                          style: const TextStyle(fontSize: 14)),
+                    ),
+                  // Who liked
+                  if (likedBy.isNotEmpty) _LikedBySection(uids: likedBy),
+                  const Divider(height: 1),
+                  // Comments button
+                  ListTile(
+                    leading: const Icon(Icons.chat_bubble_outline,
+                        color: Color(0xFF0071BC)),
+                    title: Text(
+                      'Комментарии ($commentCount)',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _openComments(context),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ── Who liked section ────────────────────────────────────────────────────────
+
+class _LikedBySection extends StatefulWidget {
+  final List<String> uids;
+  const _LikedBySection({required this.uids});
+
+  @override
+  State<_LikedBySection> createState() => _LikedBySectionState();
+}
+
+class _LikedBySectionState extends State<_LikedBySection> {
+  List<String> _names = [];
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_LikedBySection old) {
+    super.didUpdateWidget(old);
+    if (old.uids != widget.uids) _load();
+  }
+
+  Future<void> _load() async {
+    final names = <String>[];
+    for (final uid in widget.uids) {
+      final d = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      if (d.exists) {
+        names.add(d.data()?['fio'] as String? ?? 'Пользователь');
+      }
+    }
+    if (mounted) setState(() { _names = names; _loaded = true; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        child: LinearProgressIndicator(),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 13, color: Colors.black87),
+          children: [
+            const TextSpan(text: '❤️  '),
+            const TextSpan(
+              text: 'Нравится: ',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextSpan(text: _names.join(', ')),
+          ],
+        ),
+      ),
     );
   }
 }
