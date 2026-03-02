@@ -20,6 +20,7 @@ import '../../services/post/post_service.dart';
 import 'add_post/add_post_page.dart';
 import 'profile_sub_screen/profile_player.dart';
 import '../../components/posts/comments_sheet.dart';
+import '../../components/posts/video_player_section.dart';
 
 
 class Profile_Page extends StatefulWidget {
@@ -210,7 +211,22 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
 
   Widget _buildPostTile(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final mediaType = data['mediaType'] as String? ?? 'image';
     final imageUrl = data['imageUrl'] as String? ?? '';
+
+    if (mediaType == 'video') {
+      return GestureDetector(
+        onTap: () => _showPostDetail(doc),
+        child: Container(
+          color: Colors.black87,
+          child: const Center(
+            child: Icon(Icons.play_circle_outline_rounded,
+                color: Colors.white60, size: 40),
+          ),
+        ),
+      );
+    }
+
     if (imageUrl.isEmpty) return const SizedBox.shrink();
 
     return GestureDetector(
@@ -748,21 +764,30 @@ class _PostOwnerSheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Square image
-                  AspectRatio(
-                    aspectRatio: 1.0,
-                    child: Image.network(
-                      data['imageUrl'] ?? '',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade100,
-                        child: const Center(
-                          child: Icon(Icons.broken_image_outlined,
-                              size: 48, color: Colors.grey),
+                  // Media: video or image
+                  Builder(builder: (_) {
+                    final mediaType =
+                        data['mediaType'] as String? ?? 'image';
+                    final videoUrl =
+                        data['videoUrl'] as String? ?? '';
+                    if (mediaType == 'video' && videoUrl.isNotEmpty) {
+                      return VideoPlayerSection(videoUrl: videoUrl);
+                    }
+                    return AspectRatio(
+                      aspectRatio: 1.0,
+                      child: Image.network(
+                        data['imageUrl'] ?? '',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.grey.shade100,
+                          child: const Center(
+                            child: Icon(Icons.broken_image_outlined,
+                                size: 48, color: Colors.grey),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                   // Title + popup menu
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 12, 8, 4),

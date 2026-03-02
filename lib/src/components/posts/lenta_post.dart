@@ -2,8 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
 import '../../icons/player_icon_icons.dart';
+import 'video_player_section.dart';
 import '../../services/auth/auth_service.dart';
 import '../../../src/pages/screans/profile_sub_screen/profile_player.dart';
 import 'comments_sheet.dart';
@@ -175,7 +175,7 @@ class _LentaPostState extends State<LentaPost> {
                   ),
                   // Media: image or video
                   if (mediaType == 'video' && videoUrl.isNotEmpty)
-                    _VideoPlayerSection(videoUrl: videoUrl)
+                    VideoPlayerSection(videoUrl: videoUrl)
                   else if (widget.imageUrl.isNotEmpty)
                     AspectRatio(
                       aspectRatio: 1.0,
@@ -282,77 +282,3 @@ class _LentaPostState extends State<LentaPost> {
   }
 }
 
-class _VideoPlayerSection extends StatefulWidget {
-  final String videoUrl;
-
-  const _VideoPlayerSection({required this.videoUrl});
-
-  @override
-  State<_VideoPlayerSection> createState() => _VideoPlayerSectionState();
-}
-
-class _VideoPlayerSectionState extends State<_VideoPlayerSection> {
-  late VideoPlayerController _controller;
-  bool _initialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller =
-        VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-          ..initialize().then((_) {
-            if (mounted) setState(() => _initialized = true);
-          });
-    _controller.addListener(() {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_initialized) {
-      return AspectRatio(
-        aspectRatio: 1.0,
-        child: Container(
-          color: Colors.black,
-          child: const Center(
-            child: CircularProgressIndicator(
-                color: Colors.white, strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-    return AspectRatio(
-      aspectRatio: _controller.value.aspectRatio,
-      child: GestureDetector(
-        onTap: () {
-          _controller.value.isPlaying
-              ? _controller.pause()
-              : _controller.play();
-        },
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            VideoPlayer(_controller),
-            if (!_controller.value.isPlaying)
-              Container(
-                decoration: const BoxDecoration(
-                  color: Colors.black45,
-                  shape: BoxShape.circle,
-                ),
-                padding: const EdgeInsets.all(12),
-                child: const Icon(Icons.play_arrow_rounded,
-                    color: Colors.white, size: 44),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
