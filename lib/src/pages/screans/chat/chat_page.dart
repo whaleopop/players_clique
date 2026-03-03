@@ -80,6 +80,13 @@ class _ChatPageState extends State<ChatPage> {
   /// Cached messages stream — only recreated when _messageLimit changes.
   late Stream<QuerySnapshot> _messagesStream;
 
+  // ── Static in-memory caches (survive navigation back/forth) ────────────────
+  /// Scroll position per chatRoomId.
+  static final Map<String, double> _savedScrollPositions = {};
+  /// Last known message docs per chatRoomId — shown instantly before Firestore responds.
+  static final Map<String, List<QueryDocumentSnapshot>> _cachedDocs = {};
+  // ───────────────────────────────────────────────────────────────────────────
+
   String get _chatRoomId {
     final ids = [widget.receiverUserID, _firebaseAuth.currentUser!.uid]..sort();
     return ids.join('_');
@@ -97,14 +104,35 @@ class _ChatPageState extends State<ChatPage> {
     _markAsRead();
     _subscribeToChatRoom();
     _scrollController.addListener(_onScroll);
+
+    // Restore saved scroll position after the first frame renders.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollPosition());
   }
 
   @override
   void dispose() {
+    // Save scroll position before leaving.
+    if (_scrollController.hasClients) {
+      _savedScrollPositions[_chatRoomId] = _scrollController.position.pixels;
+    }
     _chatRoomSub?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _restoreScrollPosition() {
+    if (!_scrollController.hasClients) return;
+    final saved = _savedScrollPositions[_chatRoomId];
+    if (saved != null) {
+      // Restore to where user was.
+      _scrollController.jumpTo(
+        saved.clamp(0.0, _scrollController.position.maxScrollExtent),
+      );
+    } else {
+      // First open — jump to bottom.
+      _scrollToBottom();
+    }
   }
 
   void _subscribeToChatRoom() {
@@ -366,10 +394,21 @@ class _ChatPageState extends State<ChatPage> {
         if (snapshot.hasError) {
           return Center(child: Text('Ошибка: ${snapshot.error}'));
         }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+
+        // Use live docs if available, otherwise fall back to cache (instant reopen).
+        final List<QueryDocumentSnapshot> docs;
+        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+          docs = snapshot.data!.docs;
+          _cachedDocs[_chatRoomId] = docs; // update cache
+        } else if (snapshot.connectionState == ConnectionState.waiting) {
+          docs = _cachedDocs[_chatRoomId] ?? [];
+          if (docs.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+        } else {
+          docs = [];
         }
-        final docs = snapshot.data?.docs ?? [];
+
         if (docs.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
