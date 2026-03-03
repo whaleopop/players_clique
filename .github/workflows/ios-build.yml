@@ -1,4 +1,4 @@
-name: iOS IPA Build
+name: Flutter CI Build & Release
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-ios:
-    name: Build & Release iOS IPA
+  build:
+    name: Build iOS & Android
     runs-on: macos-latest
 
     permissions:
@@ -19,19 +19,21 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # ----------------------------
+      # Flutter Setup
+      # ----------------------------
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
           architecture: x64
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Update CocoaPods repo
-        run: pod repo update
-        working-directory: ios
-
+      # ----------------------------
+      # Extract & Bump Version
+      # ----------------------------
       - name: Extract version from pubspec.yaml
         id: version
         run: |
@@ -39,50 +41,89 @@ jobs:
           VERSION=$(echo $LINE | sed 's/version: //; s/+.*//')
           BUILD=$(echo $LINE | sed 's/.*+//')
           NEW_BUILD=$((BUILD + 1))
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "build=$BUILD" >> $GITHUB_OUTPUT
           echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Bump build number in pubspec.yaml
+      - name: Bump build number
         run: |
           sed -i.bak "s/^version: .*/version: ${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}/" pubspec.yaml
           rm pubspec.yaml.bak
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pubspec.yaml
-          git commit -m "Bump iOS build number to ${{ steps.version.outputs.new_build }}"
+          git commit -m "CI: Bump build to ${{ steps.version.outputs.new_build }}"
           git push
         shell: bash
 
-      - name: Build iOS app (no codesign)
-        run: flutter build ios --release --no-codesign
-        env:
-          CODE_SIGNING_ALLOWED: "NO"
-          CODE_SIGNING_REQUIRED: "NO"
-          CODE_SIGN_IDENTITY: ""
-          COMPILER_INDEX_STORE_ENABLE: "NO"
-
-      - name: Prepare IPA
-        working-directory: build/ios/iphoneos
+      # ----------------------------
+      # iOS BUILD (NO CODESIGN)
+      # ----------------------------
+      - name: Build iOS (no codesign)
         run: |
+          flutter clean
+          flutter pub get
+          flutter build ios --release --no-codesign
+
+      - name: Create IPA
+        run: |
+          cd build/ios/iphoneos
           mkdir -p Payload
           mv Runner.app Payload/
-          zip -qq -r -9 FlutterIpaExport.ipa Payload
+          zip -qq -r -9 FlutterApp.ipa Payload
 
-      - name: Upload artifact
+      # ----------------------------
+      # Android BUILD
+      # ----------------------------
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      # ----------------------------
+      # Upload Artifacts
+      # ----------------------------
+      - name: Upload iOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FlutterIpaExport
-          path: build/ios/iphoneos/FlutterIpaExport.ipa
+          name: iOS-IPA
+          path: build/ios/iphoneos/FlutterApp.ipa
 
-      - name: Upload IPA to GitHub Release
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/ios/iphoneos/FlutterIpaExport.ipa
-          tag: v${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}
-          release_name: "v${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}"
-          body: "Auto-generated release v${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}"
-          overwrite: true
-          make_latest: true
+          name: Android-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      # ----------------------------
+      # Create GitHub Release
+      # ----------------------------
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}
+          name: v${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}
+          body: |
+            🚀 Auto build release
+            
+            iOS IPA + Android APK
+            
+            Version: ${{ steps.version.outputs.version }}
+            Build: ${{ steps.version.outputs.new_build }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload IPA to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ios/iphoneos/FlutterApp.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
