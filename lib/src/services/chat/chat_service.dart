@@ -55,6 +55,7 @@ class ChatService extends ChangeNotifier {
         'lastMessage': message,
         'lastMessageType': 'text',
         'lastMessageTime': timestamp,
+        'lastSenderId': currentUserId,
         'participants': [currentUserId, receiverId],
       },
       SetOptions(merge: true),
@@ -116,6 +117,7 @@ class ChatService extends ChangeNotifier {
         'lastMessage': '📷 Фото',
         'lastMessageType': 'image',
         'lastMessageTime': timestamp,
+        'lastSenderId': currentUserId,
         'participants': [currentUserId, receiverId],
       },
       SetOptions(merge: true),
@@ -150,12 +152,48 @@ class ChatService extends ChangeNotifier {
         'lastMessage': stickerEmoji,
         'lastMessageType': 'sticker',
         'lastMessageTime': timestamp,
+        'lastSenderId': currentUserId,
         'participants': [currentUserId, receiverId],
       },
       SetOptions(merge: true),
     );
     await batch.commit();
     _checkMutualFriendship(currentUserId, receiverId, chatRoomId);
+  }
+
+  /// Mark chat as read by [userId] — updates lastRead_{userId} on chatRoom doc.
+  Future<void> markAsRead(String chatRoomId, String userId) async {
+    try {
+      await _firestore.collection('chat_rooms').doc(chatRoomId).set(
+        {'lastRead_$userId': Timestamp.now()},
+        SetOptions(merge: true),
+      );
+    } catch (_) {}
+  }
+
+  /// Stream of the chatRoom document (used to track lastRead timestamps).
+  Stream<DocumentSnapshot> getChatRoomStream(String userId, String otherUserId) {
+    final chatRoomId = _getChatRoomId(userId, otherUserId);
+    return _firestore.collection('chat_rooms').doc(chatRoomId).snapshots();
+  }
+
+  /// Stream of whether [currentUserId] has unread messages in a chatRoom.
+  Stream<bool> getHasUnreadStream(String chatRoomId, String currentUserId) {
+    return _firestore
+        .collection('chat_rooms')
+        .doc(chatRoomId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return false;
+      final data = doc.data() as Map<String, dynamic>;
+      final lastSenderId = data['lastSenderId'] as String?;
+      if (lastSenderId == null || lastSenderId == currentUserId) return false;
+      final lastMsgTime = data['lastMessageTime'] as Timestamp?;
+      if (lastMsgTime == null) return false;
+      final lastRead = data['lastRead_$currentUserId'] as Timestamp?;
+      if (lastRead == null) return true;
+      return lastMsgTime.compareTo(lastRead) > 0;
+    });
   }
 
   Stream<QuerySnapshot> getLastMessage(String userId, String otherUserId) {
@@ -169,13 +207,15 @@ class ChatService extends ChangeNotifier {
         .snapshots();
   }
 
-  Stream<QuerySnapshot> getMessages(String userId, String otherUserId) {
+  Stream<QuerySnapshot> getMessages(String userId, String otherUserId,
+      {int limit = 40}) {
     final chatRoomId = _getChatRoomId(userId, otherUserId);
     return _firestore
         .collection('chat_rooms')
         .doc(chatRoomId)
         .collection('messages')
         .orderBy('timestamp', descending: false)
+        .limitToLast(limit)
         .snapshots();
   }
 

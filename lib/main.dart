@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:players_clique/firebase_options.dart';
 import 'package:players_clique/src/services/auth/auth_gate.dart';
@@ -6,9 +7,19 @@ import 'package:players_clique/src/services/auth/auth_service.dart';
 import 'package:players_clique/src/services/theme/theme_service.dart';
 import 'package:provider/provider.dart';
 
+Future<void> _requestNotificationPermission() async {
+  final messaging = FirebaseMessaging.instance;
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await _requestNotificationPermission();
   runApp(
     MultiProvider(
       providers: [

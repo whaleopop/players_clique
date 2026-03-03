@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -65,7 +67,15 @@ class _ChatPageState extends State<ChatPage> {
   bool _isSending = false;
   String? _avatarUrl;
   String? _displayName;
-  Map<String, dynamic>? _replyToData; // {id, text, senderName}
+  Map<String, dynamic>? _replyToData;
+
+  /// Last read timestamp of the receiver — used to determine ✓✓ status.
+  Timestamp? _receiverLastRead;
+  StreamSubscription<DocumentSnapshot>? _chatRoomSub;
+
+  /// Pagination: number of messages to load.
+  int _messageLimit = 40;
+  bool _loadingOlderMessages = false;
 
   String get _chatRoomId {
     final ids = [widget.receiverUserID, _firebaseAuth.currentUser!.uid]..sort();
@@ -76,13 +86,45 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _loadReceiverInfo();
+    _markAsRead();
+    _subscribeToChatRoom();
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _chatRoomSub?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _subscribeToChatRoom() {
+    _chatRoomSub = _chatService
+        .getChatRoomStream(_firebaseAuth.currentUser!.uid, widget.receiverUserID)
+        .listen((doc) {
+      if (!doc.exists || !mounted) return;
+      final data = doc.data() as Map<String, dynamic>;
+      final receiverLastRead =
+          data['lastRead_${widget.receiverUserID}'] as Timestamp?;
+      setState(() => _receiverLastRead = receiverLastRead);
+    });
+  }
+
+  Future<void> _markAsRead() async {
+    await _chatService.markAsRead(_chatRoomId, _firebaseAuth.currentUser!.uid);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels <= 80 && !_loadingOlderMessages) {
+      setState(() {
+        _loadingOlderMessages = true;
+        _messageLimit += 30;
+      });
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) setState(() => _loadingOlderMessages = false);
+      });
+    }
   }
 
   Future<void> _loadReceiverInfo() async {
@@ -309,6 +351,7 @@ class _ChatPageState extends State<ChatPage> {
       stream: _chatService.getMessages(
         widget.receiverUserID,
         _firebaseAuth.currentUser!.uid,
+        limit: _messageLimit,
       ),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -319,13 +362,39 @@ class _ChatPageState extends State<ChatPage> {
         }
         final docs = snapshot.data?.docs ?? [];
         if (docs.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            // Only auto-scroll to bottom if user is near the bottom.
+            if (_scrollController.hasClients) {
+              final pos = _scrollController.position;
+              if (pos.maxScrollExtent - pos.pixels < 200) {
+                _scrollToBottom();
+              }
+            }
+            // Mark as read when new messages arrive.
+            _markAsRead();
+          });
         }
-        return ListView.builder(
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          itemCount: docs.length,
-          itemBuilder: (context, index) => _buildMessageItem(docs[index]),
+
+        return Column(
+          children: [
+            if (_loadingOlderMessages)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                itemCount: docs.length,
+                itemBuilder: (context, index) => _buildMessageItem(docs[index]),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -339,8 +408,18 @@ class _ChatPageState extends State<ChatPage> {
     final message = data['message'] as String? ?? '';
     final edited = data['edited'] as bool? ?? false;
     DateTime? time;
+    Timestamp? msgTimestamp;
     if (data['timestamp'] != null) {
-      time = (data['timestamp'] as Timestamp).toDate();
+      msgTimestamp = data['timestamp'] as Timestamp;
+      time = msgTimestamp.toDate();
+    }
+
+    // Determine read status for my messages.
+    bool? isRead;
+    if (isMe && msgTimestamp != null && _receiverLastRead != null) {
+      isRead = _receiverLastRead!.compareTo(msgTimestamp) >= 0;
+    } else if (isMe) {
+      isRead = false;
     }
 
     return Padding(
@@ -372,6 +451,7 @@ class _ChatPageState extends State<ChatPage> {
               mediaUrl: mediaUrl,
               time: time,
               edited: edited,
+              isRead: isRead,
               replyToText: data['replyToText'] as String?,
               replyToSenderName: data['replyToSenderName'] as String?,
             ),

@@ -9,6 +9,8 @@ class ChatBubble extends StatelessWidget {
   final bool edited;
   final String? replyToText;
   final String? replyToSenderName;
+  /// null = not my message (no checkmark), false = sent, true = read by receiver
+  final bool? isRead;
 
   const ChatBubble({
     super.key,
@@ -20,6 +22,7 @@ class ChatBubble extends StatelessWidget {
     this.edited = false,
     this.replyToText,
     this.replyToSenderName,
+    this.isRead,
   });
 
   @override
@@ -111,7 +114,7 @@ class ChatBubble extends StatelessWidget {
               height: 1.3,
             ),
           ),
-          if (time != null || edited) ...[
+          if (time != null || edited || isMe) ...[
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -133,6 +136,14 @@ class ChatBubble extends StatelessWidget {
                       color: isMe ? Colors.white54 : cs.onSurface.withValues(alpha: 0.45),
                     ),
                   ),
+                if (isMe) ...[
+                  const SizedBox(width: 3),
+                  Icon(
+                    isRead == true ? Icons.done_all : Icons.done,
+                    size: 13,
+                    color: isRead == true ? Colors.white : Colors.white54,
+                  ),
+                ],
               ],
             ),
           ],

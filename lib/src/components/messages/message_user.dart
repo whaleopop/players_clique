@@ -7,7 +7,9 @@ class MessageProfile extends StatefulWidget {
   final void Function()? onTap;
   final String text;
   final ImageProvider iconProfile;
+  /// The other user's ID.
   final String senderId;
+  /// The current user's ID.
   final String receiverId;
   final ChatService chatService;
 
@@ -27,12 +29,19 @@ class MessageProfile extends StatefulWidget {
 
 class _MessageProfileState extends State<MessageProfile> {
   late Stream<QuerySnapshot> _messageStream;
+  late Stream<bool> _unreadStream;
 
   @override
   void initState() {
     super.initState();
+    final chatRoomId =
+        ([widget.senderId, widget.receiverId]..sort()).join('_');
     _messageStream = widget.chatService.getLastMessage(
       widget.senderId,
+      widget.receiverId,
+    );
+    _unreadStream = widget.chatService.getHasUnreadStream(
+      chatRoomId,
       widget.receiverId,
     );
   }
@@ -60,6 +69,7 @@ class _MessageProfileState extends State<MessageProfile> {
 
   @override
   Widget build(BuildContext context) {
+    final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
@@ -78,11 +88,37 @@ class _MessageProfileState extends State<MessageProfile> {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundImage: widget.iconProfile,
-              onBackgroundImageError: (_, __) {},
-              backgroundColor: Colors.lightBlue.shade100,
+            // Avatar with unread dot badge
+            StreamBuilder<bool>(
+              stream: _unreadStream,
+              builder: (context, snap) {
+                final hasUnread = snap.data ?? false;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundImage: widget.iconProfile,
+                      onBackgroundImageError: (_, __) {},
+                      backgroundColor: Colors.lightBlue.shade100,
+                    ),
+                    if (hasUnread)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0071BC),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: scaffoldBg, width: 2),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -117,14 +153,28 @@ class _MessageProfileState extends State<MessageProfile> {
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(
-                              preview,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
-                              ),
+                            StreamBuilder<bool>(
+                              stream: _unreadStream,
+                              builder: (context, unreadSnap) {
+                                final hasUnread = unreadSnap.data ?? false;
+                                return Text(
+                                  preview,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: hasUnread
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                    color: hasUnread
+                                        ? Theme.of(context).colorScheme.onSurface
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.55),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -134,7 +184,10 @@ class _MessageProfileState extends State<MessageProfile> {
                           time,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.45),
                           ),
                         ),
                     ],
