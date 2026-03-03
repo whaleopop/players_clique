@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../models/post.dart';
+import '../notification/notification_sender.dart';
 
 class PostService with ChangeNotifier {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -13,12 +14,19 @@ class PostService with ChangeNotifier {
   Future<void> createPost(Post post) async {
     final user = _firebaseAuth.currentUser;
     if (user != null) {
-      await _firestore
+      final docRef = await _firestore
           .collection('posts')
           .doc(post.userId)
           .collection("post")
           .add(post.toMap());
-      notifyListeners(); // Notify listeners to update UI
+      notifyListeners();
+      // Notify friends about the new post (fire-and-forget).
+      NotificationSender.sendPostNotification(
+        authorId: post.userId,
+        postTitle: post.namePost,
+        postDesc: post.descPost,
+        postId: docRef.id,
+      );
     } else {
       throw Exception('User not logged in');
     }

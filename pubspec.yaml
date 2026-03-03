@@ -53,6 +53,7 @@ dependencies:
   web_socket_channel: ^3.0.0
   webview_flutter: ^4.0.0
   firebase_messaging: ^15.0.0
+  googleapis_auth: ^1.6.0
 
 dev_dependencies:
   flutter_test:

@@ -20,6 +20,8 @@ Future<void> _saveFcmToken() async {
   try {
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) {
+      // ignore: avoid_print
+      print('🔔 FCM TOKEN: $token');
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)

@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../models/message.dart';
+import '../notification/notification_sender.dart';
 
 class ChatService extends ChangeNotifier {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -62,6 +63,13 @@ class ChatService extends ChangeNotifier {
     );
     await batch.commit();
     _checkMutualFriendship(currentUserId, receiverId, chatRoomId);
+    NotificationSender.sendMessageNotification(
+      senderId: currentUserId,
+      receiverId: receiverId,
+      messageText: message,
+      messageType: 'text',
+      chatRoomId: chatRoomId,
+    );
   }
 
   Future<void> _checkMutualFriendship(
@@ -124,6 +132,13 @@ class ChatService extends ChangeNotifier {
     );
     await batch.commit();
     _checkMutualFriendship(currentUserId, receiverId, chatRoomId);
+    NotificationSender.sendMessageNotification(
+      senderId: currentUserId,
+      receiverId: receiverId,
+      messageText: '📷 Фото',
+      messageType: 'image',
+      chatRoomId: chatRoomId,
+    );
   }
 
   Future<void> sendStickerMessage(String receiverId, String stickerEmoji) async {
@@ -159,6 +174,13 @@ class ChatService extends ChangeNotifier {
     );
     await batch.commit();
     _checkMutualFriendship(currentUserId, receiverId, chatRoomId);
+    NotificationSender.sendMessageNotification(
+      senderId: currentUserId,
+      receiverId: receiverId,
+      messageText: stickerEmoji,
+      messageType: 'sticker',
+      chatRoomId: chatRoomId,
+    );
   }
 
   /// Mark chat as read by [userId] — updates lastRead_{userId} on chatRoom doc.

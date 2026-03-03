@@ -45,11 +45,10 @@ class AuthService extends ChangeNotifier {
 
   Future<String?> getUserField(String uid, String fieldName) async {
     try {
-      DocumentSnapshot userDoc = await _firestore.collection('users').doc(uid).get();
-      return userDoc.get(fieldName);
-    } catch (e) {
-      // Handle any errors that occur while fetching the document
-      print('Error getting user field: $e');
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      final data = userDoc.data() as Map<String, dynamic>?;
+      return data?[fieldName];
+    } catch (_) {
       return null;
     }
   }
