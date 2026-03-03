@@ -14,13 +14,14 @@ jobs:
       contents: write
 
     steps:
+      # ----------------------------
+      # Checkout
+      # ----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       # ----------------------------
-      # Flutter Setup
+      # Flutter setup
       # ----------------------------
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -32,14 +33,19 @@ jobs:
         run: flutter pub get
 
       # ----------------------------
-      # Extract & Bump Version
+      # Extract version from pubspec
       # ----------------------------
-      - name: Extract version from pubspec.yaml
+      - name: Extract version info
         id: version
         run: |
           LINE=$(grep '^version:' pubspec.yaml)
           VERSION=$(echo $LINE | sed 's/version: //; s/+.*//')
           BUILD=$(echo $LINE | sed 's/.*+//')
+
+          if [ -z "$BUILD" ]; then
+            BUILD=1
+          fi
+
           NEW_BUILD=$((BUILD + 1))
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -47,26 +53,16 @@ jobs:
           echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Bump build number
-        run: |
-          sed -i.bak "s/^version: .*/version: ${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}/" pubspec.yaml
-          rm pubspec.yaml.bak
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pubspec.yaml
-          git commit -m "CI: Bump build to ${{ steps.version.outputs.new_build }}"
-          git push
-        shell: bash
-
       # ----------------------------
-      # iOS BUILD (NO CODESIGN)
+      # iOS build (NO CODESIGN)
       # ----------------------------
-      - name: Build iOS (no codesign)
+      - name: Build iOS
         run: |
           flutter clean
           flutter pub get
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign \
+            --build-name=${{ steps.version.outputs.version }} \
+            --build-number=${{ steps.version.outputs.new_build }}
 
       - name: Create IPA
         run: |
@@ -76,13 +72,16 @@ jobs:
           zip -qq -r -9 FlutterApp.ipa Payload
 
       # ----------------------------
-      # Android BUILD
+      # Android build
       # ----------------------------
       - name: Build Android APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release \
+            --build-name=${{ steps.version.outputs.version }} \
+            --build-number=${{ steps.version.outputs.new_build }}
 
       # ----------------------------
-      # Upload Artifacts
+      # Upload artifacts (Actions tab)
       # ----------------------------
       - name: Upload iOS Artifact
         uses: actions/upload-artifact@v4
@@ -106,8 +105,6 @@ jobs:
           name: v${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}
           body: |
             🚀 Auto build release
-            
-            iOS IPA + Android APK
             
             Version: ${{ steps.version.outputs.version }}
             Build: ${{ steps.version.outputs.new_build }}
