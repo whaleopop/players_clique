@@ -54,15 +54,34 @@ jobs:
         shell: bash
 
       # ----------------------------
+      # CocoaPods cache
+      # ----------------------------
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-
+
+      # ----------------------------
       # iOS build (NO CODESIGN)
       # ----------------------------
+      - name: Pod install (with retry)
+        run: |
+          cd ios
+          for i in 1 2 3; do
+            pod install --repo-update && break || echo "Retry $i..." && sleep 15
+          done
+
       - name: Build iOS
         run: |
-          flutter clean
-          flutter pub get
           flutter build ios --release --no-codesign \
             --build-name=${{ steps.version.outputs.version }} \
             --build-number=${{ steps.version.outputs.new_build }}
+        env:
+          CODE_SIGNING_ALLOWED: "NO"
+          CODE_SIGNING_REQUIRED: "NO"
+          CODE_SIGN_IDENTITY: ""
 
       - name: Create IPA
         run: |
