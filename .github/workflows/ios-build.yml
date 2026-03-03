@@ -68,9 +68,15 @@ jobs:
       # ----------------------------
       - name: Pod install (with retry)
         run: |
+          git config --global http.postBuffer 524288000
+          git config --global http.lowSpeedLimit 0
+          git config --global http.lowSpeedTime 999
           cd ios
-          for i in 1 2 3; do
-            pod install --repo-update && break || echo "Retry $i..." && sleep 15
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i..."
+            pod install --repo-update && break
+            echo "Failed, waiting $((i * 30))s..."
+            sleep $((i * 30))
           done
 
       - name: Build iOS
