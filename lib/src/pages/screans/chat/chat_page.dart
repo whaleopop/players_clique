@@ -77,6 +77,9 @@ class _ChatPageState extends State<ChatPage> {
   int _messageLimit = 40;
   bool _loadingOlderMessages = false;
 
+  /// Cached messages stream — only recreated when _messageLimit changes.
+  late Stream<QuerySnapshot> _messagesStream;
+
   String get _chatRoomId {
     final ids = [widget.receiverUserID, _firebaseAuth.currentUser!.uid]..sort();
     return ids.join('_');
@@ -85,6 +88,11 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    _messagesStream = _chatService.getMessages(
+      widget.receiverUserID,
+      _firebaseAuth.currentUser!.uid,
+      limit: _messageLimit,
+    );
     _loadReceiverInfo();
     _markAsRead();
     _subscribeToChatRoom();
@@ -120,6 +128,11 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _loadingOlderMessages = true;
         _messageLimit += 30;
+        _messagesStream = _chatService.getMessages(
+          widget.receiverUserID,
+          _firebaseAuth.currentUser!.uid,
+          limit: _messageLimit,
+        );
       });
       Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted) setState(() => _loadingOlderMessages = false);
@@ -348,11 +361,7 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildMessageList() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _chatService.getMessages(
-        widget.receiverUserID,
-        _firebaseAuth.currentUser!.uid,
-        limit: _messageLimit,
-      ),
+      stream: _messagesStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text('Ошибка: ${snapshot.error}'));
@@ -363,15 +372,12 @@ class _ChatPageState extends State<ChatPage> {
         final docs = snapshot.data?.docs ?? [];
         if (docs.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            // Only auto-scroll to bottom if user is near the bottom.
             if (_scrollController.hasClients) {
               final pos = _scrollController.position;
               if (pos.maxScrollExtent - pos.pixels < 200) {
                 _scrollToBottom();
               }
             }
-            // Mark as read when new messages arrive.
-            _markAsRead();
           });
         }
 
