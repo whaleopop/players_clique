@@ -5,11 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../../services/ynison_service.dart';
 
 const _oauthUrl =
     'https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d';
+const _oauthRedirectHost = 'music.yandex.ru';
 const _tokenKey = 'yandex_music_token';
 
 class _TrackInfo {
@@ -36,7 +37,6 @@ class _MusicPageState extends State<Music_Page> {
   bool _loading = true;
   _TrackInfo? _currentTrack;
   bool _trackLoading = false;
-  final _tokenController = TextEditingController();
   Timer? _refreshTimer;
 
   @override
@@ -47,7 +47,6 @@ class _MusicPageState extends State<Music_Page> {
 
   @override
   void dispose() {
-    _tokenController.dispose();
     _refreshTimer?.cancel();
     super.dispose();
   }
@@ -133,35 +132,17 @@ class _MusicPageState extends State<Music_Page> {
   }
 
   Future<void> _openOAuth() async {
-    await launchUrl(Uri.parse(_oauthUrl), mode: LaunchMode.inAppBrowserView);
-  }
-
-  Future<void> _saveTokenFromInput() async {
-    final raw = _tokenController.text.trim();
-    if (raw.isEmpty) return;
-
-    String? token;
-    if (raw.contains('access_token=')) {
-      final fragment = Uri.parse(raw).fragment;
-      final params = Uri.splitQueryString(fragment);
-      token = params['access_token'];
-    } else {
-      token = raw;
+    final token = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const _YandexOAuthPage()),
+    );
+    if (token != null && token.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, token);
+      await _saveTokenRemote(token);
+      setState(() => _token = token);
+      _startTracking();
     }
-
-    if (token == null || token.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось извлечь токен из ссылки')),
-      );
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
-    await _saveTokenRemote(token);
-    _tokenController.clear();
-    setState(() => _token = token);
-    _startTracking();
   }
 
   Future<void> _logout() async {
@@ -214,57 +195,10 @@ class _MusicPageState extends State<Music_Page> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Нажми на логотип — откроется браузер',
+            'Нажми на логотип для входа',
             style: TextStyle(
               fontSize: 14,
               color: cs.onSurface.withValues(alpha: 0.45),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Авторизуйся и скопируй ссылку из адресной строки',
-            style: TextStyle(
-              fontSize: 12,
-              color: cs.onSurface.withValues(alpha: 0.3),
-            ),
-          ),
-          const SizedBox(height: 28),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: TextField(
-              controller: _tokenController,
-              decoration: InputDecoration(
-                hintText: 'Вставь ссылку или токен сюда',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: cs.onSurface.withValues(alpha: 0.35),
-                ),
-                filled: true,
-                fillColor: cs.onSurface.withValues(alpha: 0.06),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: cs.onSurface.withValues(alpha: 0.1)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: cs.onSurface.withValues(alpha: 0.1)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFFC3F1D)),
-                ),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.check_rounded,
-                      color: Color(0xFFFC3F1D)),
-                  onPressed: _saveTokenFromInput,
-                ),
-              ),
-              style: TextStyle(fontSize: 13, color: cs.onSurface),
-              onSubmitted: (_) => _saveTokenFromInput(),
             ),
           ),
         ],
@@ -525,6 +459,77 @@ class _MusicPageState extends State<Music_Page> {
             height: 1,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _YandexOAuthPage extends StatefulWidget {
+  const _YandexOAuthPage();
+
+  @override
+  State<_YandexOAuthPage> createState() => _YandexOAuthPageState();
+}
+
+class _YandexOAuthPageState extends State<_YandexOAuthPage> {
+  late final WebViewController _controller;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageStarted: (_) => setState(() => _loading = true),
+        onPageFinished: (url) {
+          setState(() => _loading = false);
+          _checkUrl(url);
+        },
+        onNavigationRequest: (req) {
+          if (_extractToken(req.url) != null) {
+            _handleToken(_extractToken(req.url)!);
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
+        },
+      ))
+      ..loadRequest(Uri.parse(_oauthUrl));
+  }
+
+  String? _extractToken(String url) {
+    // Token is in the fragment: https://music.yandex.ru/#access_token=...
+    final uri = Uri.parse(url);
+    if (uri.host != _oauthRedirectHost) return null;
+    final params = Uri.splitQueryString(uri.fragment);
+    return params['access_token'];
+  }
+
+  void _checkUrl(String url) {
+    final token = _extractToken(url);
+    if (token != null) _handleToken(token);
+  }
+
+  void _handleToken(String token) {
+    if (mounted) Navigator.pop(context, token);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Войти через Яндекс'),
+        backgroundColor: const Color(0xFFFC3F1D),
+        foregroundColor: Colors.white,
+      ),
+      body: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          if (_loading)
+            const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFC3F1D)),
+            ),
+        ],
       ),
     );
   }
