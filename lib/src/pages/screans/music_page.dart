@@ -38,6 +38,8 @@ class _MusicPageState extends State<Music_Page> {
   _TrackInfo? _currentTrack;
   bool _trackLoading = false;
   Timer? _refreshTimer;
+  List<TrackInfo>? _likedTracks;
+  bool _likedLoading = false;
 
   @override
   void initState() {
@@ -99,10 +101,24 @@ class _MusicPageState extends State<Music_Page> {
 
   void _startTracking() {
     _fetchCurrentTrack();
+    _loadLikedTracks();
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _fetchCurrentTrack();
     });
+  }
+
+  Future<void> _loadLikedTracks() async {
+    if (_token == null) return;
+    setState(() => _likedLoading = true);
+    try {
+      final tracks = await YnisonService.fetchLikedTracks(_token!);
+      if (!mounted) return;
+      setState(() { _likedTracks = tracks; _likedLoading = false; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() { _likedTracks = []; _likedLoading = false; });
+    }
   }
 
   Future<void> _fetchCurrentTrack() async {
@@ -207,106 +223,141 @@ class _MusicPageState extends State<Music_Page> {
   }
 
   Widget _buildConnected(ColorScheme cs) {
-    final shortToken = _token!.length > 20
-        ? '${_token!.substring(0, 10)}...${_token!.substring(_token!.length - 6)}'
-        : _token!;
-
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _yandexLogo(),
-          const SizedBox(height: 20),
-          const Text(
-            'Яндекс Музыка',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFFC3F1D),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Шапка: лого + название + выход ──────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+          child: Row(
             children: [
-              Icon(Icons.check_circle_rounded,
-                  color: Colors.green.shade400, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                'Подключено',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.green.shade400,
-                  fontWeight: FontWeight.w600,
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFC3F1D),
+                  borderRadius: BorderRadius.circular(13),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFC3F1D).withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
+                child: const Center(
+                  child: Text('Я', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, height: 1)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Яндекс Музыка',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFC3F1D))),
+                    Row(children: [
+                      Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 13),
+                      const SizedBox(width: 4),
+                      Text('Подключено',
+                          style: TextStyle(fontSize: 12, color: Colors.green.shade400, fontWeight: FontWeight.w600)),
+                    ]),
+                  ],
+                ),
+              ),
+              // Скопировать токен
+              IconButton(
+                icon: Icon(Icons.copy_rounded, size: 19, color: cs.onSurface.withValues(alpha: 0.3)),
+                tooltip: 'Скопировать токен',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: _token!));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Токен скопирован'), duration: Duration(seconds: 2)),
+                  );
+                },
+              ),
+              // Выйти
+              IconButton(
+                icon: Icon(Icons.logout_rounded, size: 19, color: cs.onSurface.withValues(alpha: 0.3)),
+                tooltip: 'Выйти',
+                onPressed: _logout,
               ),
             ],
           ),
-          const SizedBox(height: 20),
-
-          // Текущий трек
-          _buildNowPlaying(cs),
-
-          const SizedBox(height: 20),
-
-          // Карточка с токеном
-          GestureDetector(
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: _token!));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Токен скопирован'),
-                  duration: Duration(seconds: 2),
+        ),
+        // ── Сейчас играет ────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: _buildNowPlaying(cs),
+        ),
+        // ── Любимые треки ─────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+          child: Row(
+            children: [
+              const Icon(Icons.favorite_rounded, size: 16, color: Color(0xFFFC3F1D)),
+              const SizedBox(width: 6),
+              Text(
+                'Любимые треки${_likedTracks != null ? " (${_likedTracks!.length})" : ""}',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+              const Spacer(),
+              if (_likedLoading)
+                const SizedBox(
+                  width: 14, height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFC3F1D)),
+                )
+              else
+                GestureDetector(
+                  onTap: _loadLikedTracks,
+                  child: Icon(Icons.refresh_rounded, size: 18, color: cs.onSurface.withValues(alpha: 0.3)),
                 ),
-              );
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 32),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: cs.onSurface.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: cs.onSurface.withValues(alpha: 0.1)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.vpn_key_rounded,
-                      size: 16, color: Color(0xFFFC3F1D)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      shortToken,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontFamily: 'monospace',
-                        color: cs.onSurface.withValues(alpha: 0.7),
-                      ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _likedTracks == null || _likedLoading && _likedTracks!.isEmpty
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFFFC3F1D)))
+              : _likedTracks!.isEmpty
+                  ? Center(
+                      child: Text('Нет треков',
+                          style: TextStyle(color: cs.onSurface.withValues(alpha: 0.35))),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: _likedTracks!.length,
+                      itemBuilder: (context, i) {
+                        final t = _likedTracks![i];
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(7),
+                            child: t.coverUrl != null
+                                ? Image.network(t.coverUrl!, width: 46, height: 46, fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _trackPlaceholder())
+                                : _trackPlaceholder(),
+                          ),
+                          title: Text(t.title,
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                          subtitle: Text(t.artist,
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5))),
+                        );
+                      },
                     ),
-                  ),
-                  Icon(Icons.copy_rounded,
-                      size: 14,
-                      color: cs.onSurface.withValues(alpha: 0.35)),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          TextButton.icon(
-            onPressed: _logout,
-            icon: Icon(Icons.logout_rounded,
-                size: 16, color: cs.onSurface.withValues(alpha: 0.4)),
-            label: Text(
-              'Выйти',
-              style:
-                  TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+
+  Widget _trackPlaceholder() => Container(
+        width: 46, height: 46,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFC3F1D).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: const Icon(Icons.music_note_rounded, color: Color(0xFFFC3F1D), size: 22),
+      );
 
   Widget _buildNowPlaying(ColorScheme cs) {
     if (_trackLoading && _currentTrack == null) {

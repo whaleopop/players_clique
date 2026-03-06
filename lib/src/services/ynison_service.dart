@@ -21,6 +21,73 @@ class TrackInfo {
 }
 
 class YnisonService {
+  static const _base = 'https://api.music.yandex.net';
+
+  /// Возвращает Яндекс UID текущего пользователя.
+  static Future<int?> fetchAccountUid(String token) async {
+    final resp = await http.get(
+      Uri.parse('$_base/account/status'),
+      headers: {'Authorization': 'OAuth $token'},
+    ).timeout(const Duration(seconds: 10));
+    if (resp.statusCode != 200) return null;
+    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    return data['result']?['account']?['uid'] as int?;
+  }
+
+  /// Возвращает список любимых треков (до [limit] штук).
+  static Future<List<TrackInfo>> fetchLikedTracks(String token, {int limit = 50}) async {
+    final uid = await fetchAccountUid(token);
+    if (uid == null) return [];
+
+    final likesResp = await http.get(
+      Uri.parse('$_base/users/$uid/likes/tracks'),
+      headers: {'Authorization': 'OAuth $token'},
+    ).timeout(const Duration(seconds: 10));
+    if (likesResp.statusCode != 200) return [];
+
+    final likesData = jsonDecode(likesResp.body) as Map<String, dynamic>;
+    final raw = likesData['result']?['library']?['tracks'] as List? ?? [];
+    if (raw.isEmpty) return [];
+
+    final ids = raw.take(limit).map((t) {
+      final id = t['id']?.toString() ?? '';
+      final albumId = t['albumId']?.toString() ?? '';
+      return albumId.isNotEmpty ? '$id:$albumId' : id;
+    }).where((s) => s.isNotEmpty).toList();
+
+    // Batch-запрос деталей треков
+    final body = ids.map((id) => 'track-ids=${Uri.encodeComponent(id)}').join('&');
+    final detailsResp = await http.post(
+      Uri.parse('$_base/tracks'),
+      headers: {
+        'Authorization': 'OAuth $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body,
+    ).timeout(const Duration(seconds: 15));
+    if (detailsResp.statusCode != 200) return [];
+
+    final results = (jsonDecode(detailsResp.body)['result'] as List?) ?? [];
+    return results.map((t) {
+      final title = t['title'] as String? ?? 'Неизвестный трек';
+      final artist = (t['artists'] as List?)
+              ?.map((a) => a['name'] as String? ?? '')
+              .where((n) => n.isNotEmpty)
+              .join(', ') ??
+          'Неизвестный артист';
+      String? coverUrl;
+      final albums = t['albums'] as List?;
+      if (albums != null && albums.isNotEmpty) {
+        final rawUri = albums[0]['coverUri'] as String?;
+        if (rawUri != null) {
+          coverUrl =
+              'https://${rawUri.replaceFirst('//', '').replaceAll('%%', '200x200')}';
+        }
+      }
+      return TrackInfo(title: title, artist: artist, coverUrl: coverUrl);
+    }).toList();
+  }
+
   static String _deviceId() {
     final r = Random();
     const chars = 'abcdef0123456789';
