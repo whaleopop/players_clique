@@ -26,6 +26,17 @@ import '../../components/posts/comments_sheet.dart';
 import '../../components/posts/video_player_section.dart';
 
 
+const List<List<Color>> _kBannerGradients = [
+  [Color(0xFF0071BC), Color(0xFF29B6F6)],
+  [Color(0xFF6C63FF), Color(0xFFB39DDB)],
+  [Color(0xFFFC3F1D), Color(0xFFFF8C69)],
+  [Color(0xFF00897B), Color(0xFF4DB6AC)],
+  [Color(0xFF1A1A2E), Color(0xFF0F3460)],
+  [Color(0xFFFF6B6B), Color(0xFFFFE66D)],
+];
+const double _kBannerHeight = 150.0;
+const double _kAvatarRadius = 50.0;
+
 class Profile_Page extends StatefulWidget {
   @override
   _Profile_Page createState() => _Profile_Page();
@@ -182,6 +193,56 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     TaskSnapshot snapshot = await uploadTask;
     String downloadUrl = await snapshot.ref.getDownloadURL();
     return downloadUrl;
+  }
+
+  Widget _buildBanner(String imageUrl, int colorIdx) {
+    if (imageUrl.isNotEmpty) {
+      return SizedBox(
+        height: _kBannerHeight,
+        width: double.infinity,
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _gradientBanner(colorIdx),
+        ),
+      );
+    }
+    return _gradientBanner(colorIdx);
+  }
+
+  Widget _gradientBanner(int idx) {
+    final colors = _kBannerGradients[idx.clamp(0, _kBannerGradients.length - 1)];
+    return Container(
+      height: _kBannerHeight,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickBannerImage() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || _currentUid == null) return;
+    try {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final url = kIsWeb
+          ? await _uploadFile(result.files.single.bytes!, 'banners/${_currentUid}_$ts.jpg')
+          : await _uploadFile(File(result.files.single.path!), 'banners/${_currentUid}_$ts.jpg');
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUid)
+          .update({'bannerImageUrl': url});
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Ошибка загрузки баннера: $e')));
+      }
+    }
   }
 
   void signOut() {
@@ -352,144 +413,180 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: CustomScrollView(
           slivers: [
-            // Профиль: аватар + инфо
+            // Профиль: баннер + аватар + инфо
             SliverToBoxAdapter(
-              child: Container(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
-                child: Column(
-                  children: [
-                    // Аватар
-                    Stack(
-                      children: [
-                        StreamBuilder<DocumentSnapshot>(
-                          stream: _userStream,
-                          builder: (context, snapshot) {
-                            final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
-                            final url = data['photourl'] as String? ?? '';
-                            return CircleAvatar(
-                              radius: 60,
-                              backgroundColor: Colors.lightBlue.shade100,
-                              backgroundImage: url.isNotEmpty ? NetworkImage(url) : null,
-                              child: url.isEmpty
-                                  ? const Icon(Icons.person, size: 60, color: Colors.white)
-                                  : null,
-                            );
-                          },
-                        ),
-                        Positioned(
-                          bottom: 2,
-                          right: 2,
-                          child: GestureDetector(
-                            onTap: _pickFile,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0071BC),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: _userStream,
+                builder: (context, snapshot) {
+                  final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+                  final photoUrl = data['photourl'] as String? ?? '';
+                  final fio = data['fio'] as String? ?? '';
+                  final status = data['status'] as String? ?? '';
+                  final bannerColorIdx = (data['bannerColorIndex'] as num?)?.toInt() ?? 0;
+                  final bannerImageUrl = data['bannerImageUrl'] as String? ?? '';
+                  final friends = (data['friends'] as List<dynamic>? ?? []).cast<String>();
+                  final cs = Theme.of(context).colorScheme;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Баннер + аватар
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          _buildBanner(bannerImageUrl, bannerColorIdx),
+                          // Кнопка редактирования баннера
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: GestureDetector(
+                              onTap: _openEditProfile,
+                              child: Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
                               ),
-                              child: const Icon(Icons.add_a_photo, color: Colors.white, size: 15),
                             ),
                           ),
-                        ),
-                        if (kIsWeb)
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: Tooltip(
-                              message: 'Обновить приложение',
-                              child: GestureDetector(
-                                onTap: reloadAndUpdate,
-                                child: Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade200,
-                                    shape: BoxShape.circle,
+                          if (kIsWeb)
+                            Positioned(
+                              top: 10,
+                              left: 10,
+                              child: Tooltip(
+                                message: 'Обновить приложение',
+                                child: GestureDetector(
+                                  onTap: reloadAndUpdate,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(7),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.35),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.system_update_alt, size: 16, color: Colors.white),
                                   ),
-                                  child: Icon(Icons.system_update_alt,
-                                      size: 16, color: Colors.grey.shade600),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    // Имя
-                    StreamBuilder<DocumentSnapshot>(
-                      stream: _userStream,
-                      builder: (context, snapshot) {
-                        final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
-                        final fio = data['fio'] as String? ?? '';
-                        return Text(
-                          fio,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 20,
-                            letterSpacing: 0.3,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 6),
-                    _NowPlayingWidget(),
-                    const SizedBox(height: 18),
-                    // Статистика
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        StreamBuilder<QuerySnapshot>(
-                          stream: _postsStream,
-                          builder: (context, snapshot) =>
-                              _statItem('${snapshot.data?.docs.length ?? 0}', 'Посты'),
-                        ),
-                        Container(width: 1, height: 36, color: Colors.grey.shade300),
-                        StreamBuilder<DocumentSnapshot>(
-                          stream: _userStream,
-                          builder: (context, snapshot) {
-                            final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
-                            final friends = (data['friends'] as List<dynamic>? ?? []).cast<String>();
-                            return GestureDetector(
-                              onTap: friends.isNotEmpty ? () => _openFriendsList(friends) : null,
-                              child: _statItem('${friends.length}', 'Друзья'),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Кнопка Edit
-                    BlueButton(onTap: _openEditProfile, text: 'Редактировать', width: double.infinity),
-                    const SizedBox(height: 12),
-                    // Иконки выход / тема / добавить пост
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _iconBtn(icon: PlayerIcon.logout_fill, onTap: signOut),
-                        Consumer<ThemeService>(
-                          builder: (context, themeService, _) => _iconBtn(
-                            icon: themeService.isDark
-                                ? Icons.light_mode_outlined
-                                : Icons.dark_mode_outlined,
-                            onTap: themeService.toggle,
-                          ),
-                        ),
-                        _iconBtn(
-                          icon: PlayerIcon.post_add,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => Add_Post_Page(postService: PostService()),
+                          // Аватар, выступающий за нижний край баннера
+                          Positioned(
+                            bottom: -_kAvatarRadius,
+                            left: 16,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                CircleAvatar(
+                                  radius: _kAvatarRadius,
+                                  backgroundColor: Colors.lightBlue.shade100,
+                                  backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                                  child: photoUrl.isEmpty
+                                      ? Icon(Icons.person, size: _kAvatarRadius, color: Colors.white)
+                                      : null,
+                                ),
+                                Positioned(
+                                  bottom: 2,
+                                  right: 2,
+                                  child: GestureDetector(
+                                    onTap: _pickFile,
+                                    child: Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0071BC),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
+                                      child: const Icon(Icons.add_a_photo, color: Colors.white, size: 13),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        ],
+                      ),
+                      // Отступ под аватар
+                      const SizedBox(height: _kAvatarRadius + 12),
+                      // Контент профиля
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fio,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 0.3),
+                            ),
+                            const SizedBox(height: 4),
+                            if (status.isNotEmpty)
+                              Text(
+                                status,
+                                style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.55)),
+                              )
+                            else
+                              GestureDetector(
+                                onTap: _openEditProfile,
+                                child: Text(
+                                  '+ Добавить статус',
+                                  style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.3)),
+                                ),
+                              ),
+                            const SizedBox(height: 10),
+                            _NowPlayingWidget(),
+                            const SizedBox(height: 18),
+                            // Статистика
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                StreamBuilder<QuerySnapshot>(
+                                  stream: _postsStream,
+                                  builder: (context, snapshot) =>
+                                      _statItem('${snapshot.data?.docs.length ?? 0}', 'Посты'),
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 36,
+                                  color: Colors.grey.shade300,
+                                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                                ),
+                                GestureDetector(
+                                  onTap: friends.isNotEmpty ? () => _openFriendsList(friends) : null,
+                                  child: _statItem('${friends.length}', 'Друзья'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            BlueButton(onTap: _openEditProfile, text: 'Редактировать', width: double.infinity),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _iconBtn(icon: PlayerIcon.logout_fill, onTap: signOut),
+                                Consumer<ThemeService>(
+                                  builder: (context, themeService, _) => _iconBtn(
+                                    icon: themeService.isDark
+                                        ? Icons.light_mode_outlined
+                                        : Icons.dark_mode_outlined,
+                                    onTap: themeService.toggle,
+                                  ),
+                                ),
+                                _iconBtn(
+                                  icon: PlayerIcon.post_add,
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => Add_Post_Page(postService: PostService())),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
             // Разделитель
@@ -575,38 +672,145 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     if (_currentUid == null) return;
     final doc = await FirebaseFirestore.instance.collection('users').doc(_currentUid).get();
     if (!mounted) return;
-    final fioCtrl = TextEditingController(text: doc.data()?['fio'] as String? ?? '');
-    showDialog(
+    final d = doc.data() ?? {};
+    final fioCtrl = TextEditingController(text: d['fio'] as String? ?? '');
+    final statusCtrl = TextEditingController(text: d['status'] as String? ?? '');
+    int selectedColor = (d['bannerColorIndex'] as num?)?.toInt() ?? 0;
+    bool hasCustomBanner = (d['bannerImageUrl'] as String? ?? '').isNotEmpty;
+
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Редактировать профиль'),
-        content: TextField(
-          controller: fioCtrl,
-          decoration: const InputDecoration(labelText: 'Имя'),
-          autofocus: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Редактировать профиль',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: fioCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Имя',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: statusCtrl,
+                    maxLength: 80,
+                    decoration: InputDecoration(
+                      labelText: 'Статус',
+                      hintText: 'Что у тебя сейчас...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('Баннер',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ...List.generate(_kBannerGradients.length, (i) {
+                        final selected = !hasCustomBanner && selectedColor == i;
+                        return GestureDetector(
+                          onTap: () => setS(() { selectedColor = i; hasCustomBanner = false; }),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            width: 36, height: 36,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: _kBannerGradients[i],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                              border: selected
+                                  ? Border.all(color: Colors.white, width: 3)
+                                  : Border.all(color: Colors.transparent, width: 3),
+                              boxShadow: selected
+                                  ? [BoxShadow(color: _kBannerGradients[i][0].withValues(alpha: 0.5), blurRadius: 8)]
+                                  : [],
+                            ),
+                          ),
+                        );
+                      }),
+                      // Загрузить фото
+                      GestureDetector(
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          await _pickBannerImage();
+                        },
+                        child: Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                            border: hasCustomBanner
+                                ? Border.all(color: const Color(0xFF0071BC), width: 2)
+                                : null,
+                          ),
+                          child: Icon(Icons.add_photo_alternate_outlined,
+                              size: 20, color: Colors.grey.shade600),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0071BC),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () async {
+                        Navigator.of(ctx).pop();
+                        if (_currentUid == null) return;
+                        final updates = <String, dynamic>{
+                          'status': statusCtrl.text.trim(),
+                        };
+                        final newFio = fioCtrl.text.trim();
+                        if (newFio.isNotEmpty) updates['fio'] = newFio;
+                        if (!hasCustomBanner) {
+                          updates['bannerColorIndex'] = selectedColor;
+                          updates['bannerImageUrl'] = '';
+                        }
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(_currentUid)
+                            .update(updates);
+                      },
+                      child: const Text('Сохранить',
+                          style: TextStyle(color: Colors.white, fontSize: 15)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0071BC)),
-            onPressed: () async {
-              Navigator.of(context).pop();
-              if (_currentUid == null) return;
-              final newFio = fioCtrl.text.trim();
-              if (newFio.isEmpty) return;
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(_currentUid)
-                  .update({'fio': newFio});
-              // stream auto-updates the name display
-            },
-            child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
@@ -981,21 +1185,94 @@ class _NowPlayingWidgetState extends State<_NowPlayingWidget> {
   Widget build(BuildContext context) {
     if (!_loaded || _track == null || _track!.paused) return const SizedBox.shrink();
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.music_note_rounded, size: 13, color: Color(0xFFFC3F1D)),
-        const SizedBox(width: 4),
-        Text(
-          '${_track!.artist} — ${_track!.title}',
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+    final cs = Theme.of(context).colorScheme;
+    final track = _track!;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFC3F1D).withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFC3F1D).withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          // Обложка
+          ClipRRect(
+            borderRadius: BorderRadius.circular(7),
+            child: track.coverUrl != null
+                ? Image.network(
+                    track.coverUrl!,
+                    width: 42, height: 42, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _coverPlaceholder(),
+                  )
+                : _coverPlaceholder(),
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
+          const SizedBox(width: 10),
+          // Информация о треке
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.music_note_rounded, size: 10, color: Color(0xFFFC3F1D)),
+                    const SizedBox(width: 3),
+                    const Text(
+                      'Сейчас играет',
+                      style: TextStyle(fontSize: 10, color: Color(0xFFFC3F1D)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  track.title,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  track.artist,
+                  style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Бейдж Яндекса
+          Container(
+            width: 26, height: 26,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFC3F1D),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Center(
+              child: Text(
+                'Я',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  height: 1,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _coverPlaceholder() {
+    return Container(
+      width: 42, height: 42,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFC3F1D).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: const Icon(Icons.music_note_rounded, color: Color(0xFFFC3F1D), size: 20),
     );
   }
 }
