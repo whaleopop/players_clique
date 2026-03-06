@@ -55,6 +55,10 @@ dependencies:
   firebase_messaging: ^15.0.0
   googleapis_auth: ^1.6.0
 
+dependency_overrides:
+  # win32 5.2.0 uses UnmodifiableUint8ListView removed in Dart 3.3+
+  win32: ">=5.5.0 <6.0.0"
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
