@@ -3,16 +3,19 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class TrackInfo {
+  final String id;
   final String title;
   final String artist;
   final String? coverUrl;
   final bool paused;
 
   const TrackInfo({
+    this.id = '',
     required this.title,
     required this.artist,
     this.coverUrl,
@@ -34,58 +37,119 @@ class YnisonService {
     return data['result']?['account']?['uid'] as int?;
   }
 
-  /// Возвращает список любимых треков (до [limit] штук).
-  static Future<List<TrackInfo>> fetchLikedTracks(String token, {int limit = 50}) async {
+  // ── Liked tracks ──────────────────────────────────────────────────────────
+
+  /// Возвращает все ID любимых треков (быстро — только идентификаторы).
+  static Future<List<Map<String, String>>> fetchLikedIds(String token) async {
     final uid = await fetchAccountUid(token);
     if (uid == null) return [];
-
-    final likesResp = await http.get(
+    final resp = await http.get(
       Uri.parse('$_base/users/$uid/likes/tracks'),
       headers: {'Authorization': 'OAuth $token'},
     ).timeout(const Duration(seconds: 10));
-    if (likesResp.statusCode != 200) return [];
+    if (resp.statusCode != 200) return [];
+    final raw = (jsonDecode(resp.body) as Map<String, dynamic>)['result']?['library']?['tracks'] as List? ?? [];
+    return raw
+        .map((t) => {'id': t['id']?.toString() ?? '', 'albumId': t['albumId']?.toString() ?? ''})
+        .where((m) => m['id']!.isNotEmpty)
+        .toList();
+  }
 
-    final likesData = jsonDecode(likesResp.body) as Map<String, dynamic>;
-    final raw = likesData['result']?['library']?['tracks'] as List? ?? [];
-    if (raw.isEmpty) return [];
-
-    final ids = raw.take(limit).map((t) {
-      final id = t['id']?.toString() ?? '';
-      final albumId = t['albumId']?.toString() ?? '';
+  /// Загружает детали для конкретного среза [ids] (для пагинации).
+  static Future<List<TrackInfo>> fetchTracksDetails(
+      String token, List<Map<String, String>> ids) async {
+    if (ids.isEmpty) return [];
+    final trackIds = ids.map((m) {
+      final id = m['id']!;
+      final albumId = m['albumId'] ?? '';
       return albumId.isNotEmpty ? '$id:$albumId' : id;
-    }).where((s) => s.isNotEmpty).toList();
-
-    // Batch-запрос деталей треков
-    final body = ids.map((id) => 'track-ids=${Uri.encodeComponent(id)}').join('&');
-    final detailsResp = await http.post(
+    }).toList();
+    final body = trackIds.map((id) => 'track-ids=${Uri.encodeComponent(id)}').join('&');
+    final resp = await http.post(
       Uri.parse('$_base/tracks'),
-      headers: {
-        'Authorization': 'OAuth $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: {'Authorization': 'OAuth $token', 'Content-Type': 'application/x-www-form-urlencoded'},
       body: body,
     ).timeout(const Duration(seconds: 15));
-    if (detailsResp.statusCode != 200) return [];
+    if (resp.statusCode != 200) return [];
+    return ((jsonDecode(resp.body)['result'] as List?) ?? []).map(_parseTrack).toList();
+  }
 
-    final results = (jsonDecode(detailsResp.body)['result'] as List?) ?? [];
-    return results.map((t) {
-      final title = t['title'] as String? ?? 'Неизвестный трек';
-      final artist = (t['artists'] as List?)
-              ?.map((a) => a['name'] as String? ?? '')
-              .where((n) => n.isNotEmpty)
-              .join(', ') ??
-          'Неизвестный артист';
-      String? coverUrl;
-      final albums = t['albums'] as List?;
-      if (albums != null && albums.isNotEmpty) {
-        final rawUri = albums[0]['coverUri'] as String?;
-        if (rawUri != null) {
-          coverUrl =
-              'https://${rawUri.replaceFirst('//', '').replaceAll('%%', '200x200')}';
-        }
+  // ── Track URL (MD5) ────────────────────────────────────────────────────────
+
+  /// Возвращает прямую ссылку для воспроизведения трека.
+  static Future<String?> fetchTrackUrl(String token, String trackId) async {
+    final resp = await http.get(
+      Uri.parse('$_base/tracks/$trackId/download-info'),
+      headers: {'Authorization': 'OAuth $token'},
+    ).timeout(const Duration(seconds: 10));
+    if (resp.statusCode != 200) return null;
+
+    final infos = (jsonDecode(resp.body)['result'] as List?) ?? [];
+    final mp3s = infos.where((i) => i['codec'] == 'mp3').toList()
+      ..sort((a, b) => (b['bitrateInKbps'] as int? ?? 0)
+          .compareTo(a['bitrateInKbps'] as int? ?? 0));
+    if (mp3s.isEmpty) return null;
+
+    final infoUrl = mp3s.first['downloadInfoUrl'] as String?;
+    if (infoUrl == null) return null;
+
+    final xmlResp = await http.get(Uri.parse(infoUrl)).timeout(const Duration(seconds: 10));
+    if (xmlResp.statusCode != 200) return null;
+
+    final x = xmlResp.body;
+    final host = _xmlTag(x, 'host');
+    final path = _xmlTag(x, 'path');
+    final ts = _xmlTag(x, 'ts');
+    final s = _xmlTag(x, 's');
+    if (host == null || path == null || ts == null || s == null) return null;
+
+    final sign = md5.convert(utf8.encode('XGRlBW9FXlekgbPrRHuSiA${path.substring(1)}$s')).toString();
+    return 'https://$host/get-mp3/$sign/$ts$path';
+  }
+
+  static String? _xmlTag(String xml, String tag) {
+    final s = xml.indexOf('<$tag>');
+    final e = xml.indexOf('</$tag>');
+    if (s == -1 || e == -1) return null;
+    return xml.substring(s + tag.length + 2, e);
+  }
+
+  // ── My Wave ────────────────────────────────────────────────────────────────
+
+  /// Загружает треки «Моей волны».
+  static Future<List<TrackInfo>> fetchMyWaveTracks(String token) async {
+    final resp = await http.post(
+      Uri.parse('$_base/rotor/station/user:onyourwave/tracks'),
+      headers: {'Authorization': 'OAuth $token', 'Content-Type': 'application/json'},
+      body: '{}',
+    ).timeout(const Duration(seconds: 12));
+    if (resp.statusCode != 200) return [];
+    final sequence = (jsonDecode(resp.body)['result']?['sequence'] as List?) ?? [];
+    return sequence
+        .map((item) => _parseTrack(item['track'] as Map<String, dynamic>? ?? {}))
+        .where((t) => t.id.isNotEmpty)
+        .toList();
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  static TrackInfo _parseTrack(dynamic t) {
+    final id = t['id']?.toString() ?? '';
+    final title = t['title'] as String? ?? 'Неизвестный трек';
+    final artist = (t['artists'] as List?)
+            ?.map((a) => a['name'] as String? ?? '')
+            .where((n) => n.isNotEmpty)
+            .join(', ') ??
+        'Неизвестный артист';
+    String? coverUrl;
+    final albums = t['albums'] as List?;
+    if (albums != null && albums.isNotEmpty) {
+      final rawUri = albums[0]['coverUri'] as String?;
+      if (rawUri != null) {
+        coverUrl = 'https://${rawUri.replaceFirst('//', '').replaceAll('%%', '200x200')}';
       }
-      return TrackInfo(title: title, artist: artist, coverUrl: coverUrl);
-    }).toList();
+    }
+    return TrackInfo(id: id, title: title, artist: artist, coverUrl: coverUrl);
   }
 
   static String _deviceId() {

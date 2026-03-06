@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -32,25 +33,60 @@ class Music_Page extends StatefulWidget {
   State<Music_Page> createState() => _MusicPageState();
 }
 
+const _kPageSize = 30;
+
 class _MusicPageState extends State<Music_Page> {
+  // ── Token / now-playing ───────────────────────────────────────────────────
   String? _token;
   bool _loading = true;
   _TrackInfo? _currentTrack;
   bool _trackLoading = false;
   Timer? _refreshTimer;
-  List<TrackInfo>? _likedTracks;
+
+  // ── Liked tracks (paginated) ──────────────────────────────────────────────
+  List<Map<String, String>> _allIds = [];   // all liked IDs from server
+  List<TrackInfo> _likedTracks = [];        // loaded details so far
   bool _likedLoading = false;
+  bool _likedLoadingMore = false;
+  final _listCtrl = ScrollController();
+
+  // ── Player ────────────────────────────────────────────────────────────────
+  final _player = AudioPlayer();
+  List<TrackInfo> _queue = [];
+  int _queueIdx = -1;
+  bool _isPlaying = false;
+  bool _playerLoading = false;
+  Duration _pos = Duration.zero;
+  Duration _dur = Duration.zero;
+
+  // ── My Wave ───────────────────────────────────────────────────────────────
+  bool _waveLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _player.onPositionChanged.listen((p) { if (mounted) setState(() => _pos = p); });
+    _player.onDurationChanged.listen((d) { if (mounted) setState(() => _dur = d); });
+    _player.onPlayerStateChanged.listen((s) {
+      if (mounted) setState(() => _isPlaying = s == PlayerState.playing);
+    });
+    _player.onPlayerComplete.listen((_) => _playNext());
+    _listCtrl.addListener(_onScroll);
     _loadToken();
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _listCtrl.dispose();
+    _player.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_listCtrl.position.pixels >= _listCtrl.position.maxScrollExtent - 200) {
+      _loadMoreLiked();
+    }
   }
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
@@ -101,23 +137,101 @@ class _MusicPageState extends State<Music_Page> {
 
   void _startTracking() {
     _fetchCurrentTrack();
-    _loadLikedTracks();
+    _loadAllLiked();
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _fetchCurrentTrack();
     });
   }
 
-  Future<void> _loadLikedTracks() async {
+  // ── Liked tracks pagination ───────────────────────────────────────────────
+
+  Future<void> _loadAllLiked() async {
     if (_token == null) return;
-    setState(() => _likedLoading = true);
+    setState(() { _likedLoading = true; _allIds = []; _likedTracks = []; });
     try {
-      final tracks = await YnisonService.fetchLikedTracks(_token!);
+      final ids = await YnisonService.fetchLikedIds(_token!);
       if (!mounted) return;
-      setState(() { _likedTracks = tracks; _likedLoading = false; });
+      setState(() { _allIds = ids; });
+      await _loadMoreLiked();
     } catch (_) {
+      if (mounted) setState(() => _likedLoading = false);
+    }
+  }
+
+  Future<void> _loadMoreLiked() async {
+    if (_token == null || _likedLoadingMore) return;
+    if (_likedTracks.length >= _allIds.length) return;
+    setState(() { _likedLoadingMore = true; _likedLoading = false; });
+    try {
+      final next = _allIds.skip(_likedTracks.length).take(_kPageSize).toList();
+      final details = await YnisonService.fetchTracksDetails(_token!, next);
       if (!mounted) return;
-      setState(() { _likedTracks = []; _likedLoading = false; });
+      setState(() { _likedTracks = [..._likedTracks, ...details]; _likedLoadingMore = false; });
+    } catch (_) {
+      if (mounted) setState(() => _likedLoadingMore = false);
+    }
+  }
+
+  // ── Playback ─────────────────────────────────────────────────────────────
+
+  Future<void> _playTrack(List<TrackInfo> queue, int index) async {
+    if (index < 0 || index >= queue.length) return;
+    final track = queue[index];
+    if (track.id.isEmpty) return;
+    setState(() { _queue = queue; _queueIdx = index; _playerLoading = true; _pos = Duration.zero; _dur = Duration.zero; });
+    try {
+      final url = await YnisonService.fetchTrackUrl(_token!, track.id);
+      if (!mounted) return;
+      if (url == null) {
+        setState(() => _playerLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Не удалось получить ссылку')));
+        return;
+      }
+      await _player.play(UrlSource(url));
+      if (mounted) setState(() => _playerLoading = false);
+    } catch (_) {
+      if (mounted) setState(() => _playerLoading = false);
+    }
+  }
+
+  void _playNext() {
+    if (_queueIdx < _queue.length - 1) _playTrack(_queue, _queueIdx + 1);
+  }
+
+  void _playPrev() {
+    if (_pos.inSeconds > 3) {
+      _player.seek(Duration.zero);
+    } else if (_queueIdx > 0) {
+      _playTrack(_queue, _queueIdx - 1);
+    }
+  }
+
+  Future<void> _togglePlayPause() async {
+    if (_isPlaying) {
+      await _player.pause();
+    } else {
+      await _player.resume();
+    }
+  }
+
+  // ── My Wave ───────────────────────────────────────────────────────────────
+
+  Future<void> _startMyWave() async {
+    if (_token == null || _waveLoading) return;
+    setState(() => _waveLoading = true);
+    try {
+      final tracks = await YnisonService.fetchMyWaveTracks(_token!);
+      if (!mounted) return;
+      if (tracks.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Моя Волна недоступна')));
+        return;
+      }
+      _playTrack(tracks, 0);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ошибка загрузки волны')));
+    } finally {
+      if (mounted) setState(() => _waveLoading = false);
     }
   }
 
@@ -264,7 +378,6 @@ class _MusicPageState extends State<Music_Page> {
                   ],
                 ),
               ),
-              // Скопировать токен
               IconButton(
                 icon: Icon(Icons.copy_rounded, size: 19, color: cs.onSurface.withValues(alpha: 0.3)),
                 tooltip: 'Скопировать токен',
@@ -275,7 +388,6 @@ class _MusicPageState extends State<Music_Page> {
                   );
                 },
               ),
-              // Выйти
               IconButton(
                 icon: Icon(Icons.logout_rounded, size: 19, color: cs.onSurface.withValues(alpha: 0.3)),
                 tooltip: 'Выйти',
@@ -289,7 +401,7 @@ class _MusicPageState extends State<Music_Page> {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
           child: _buildNowPlaying(cs),
         ),
-        // ── Любимые треки ─────────────────────────────────────────
+        // ── Заголовок списка + Моя Волна ──────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
           child: Row(
@@ -297,10 +409,38 @@ class _MusicPageState extends State<Music_Page> {
               const Icon(Icons.favorite_rounded, size: 16, color: Color(0xFFFC3F1D)),
               const SizedBox(width: 6),
               Text(
-                'Любимые треки${_likedTracks != null ? " (${_likedTracks!.length})" : ""}',
+                _allIds.isEmpty
+                    ? 'Любимые треки'
+                    : 'Любимые треки (${_likedTracks.length}/${_allIds.length})',
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
               ),
               const Spacer(),
+              // Моя Волна
+              GestureDetector(
+                onTap: _waveLoading ? null : _startMyWave,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFC3F1D).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: _waveLoading
+                      ? const SizedBox(
+                          width: 12, height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFC3F1D)),
+                        )
+                      : const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.waves_rounded, size: 13, color: Color(0xFFFC3F1D)),
+                            SizedBox(width: 4),
+                            Text('Моя Волна',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFC3F1D))),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
               if (_likedLoading)
                 const SizedBox(
                   width: 14, height: 14,
@@ -308,27 +448,41 @@ class _MusicPageState extends State<Music_Page> {
                 )
               else
                 GestureDetector(
-                  onTap: _loadLikedTracks,
+                  onTap: _loadAllLiked,
                   child: Icon(Icons.refresh_rounded, size: 18, color: cs.onSurface.withValues(alpha: 0.3)),
                 ),
             ],
           ),
         ),
+        // ── Список треков ─────────────────────────────────────────
         Expanded(
-          child: _likedTracks == null || _likedLoading && _likedTracks!.isEmpty
+          child: _likedLoading && _likedTracks.isEmpty
               ? const Center(child: CircularProgressIndicator(color: Color(0xFFFC3F1D)))
-              : _likedTracks!.isEmpty
+              : _likedTracks.isEmpty
                   ? Center(
                       child: Text('Нет треков',
                           style: TextStyle(color: cs.onSurface.withValues(alpha: 0.35))),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: _likedTracks!.length,
+                      controller: _listCtrl,
+                      padding: EdgeInsets.only(bottom: _queueIdx >= 0 ? 88 : 16),
+                      itemCount: _likedTracks.length + (_likedLoadingMore ? 1 : 0),
                       itemBuilder: (context, i) {
-                        final t = _likedTracks![i];
+                        if (i == _likedTracks.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFC3F1D)),
+                            ),
+                          );
+                        }
+                        final t = _likedTracks[i];
+                        final isActive = _queueIdx >= 0 &&
+                            _queueIdx < _queue.length &&
+                            _queue[_queueIdx].id == t.id;
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                          onTap: () => _playTrack(_likedTracks, i),
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(7),
                             child: t.coverUrl != null
@@ -338,15 +492,136 @@ class _MusicPageState extends State<Music_Page> {
                           ),
                           title: Text(t.title,
                               maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                                color: isActive ? const Color(0xFFFC3F1D) : null,
+                              )),
                           subtitle: Text(t.artist,
                               maxLines: 1, overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5))),
+                          trailing: isActive
+                              ? Icon(
+                                  _isPlaying ? Icons.equalizer_rounded : Icons.pause_circle_outline_rounded,
+                                  color: const Color(0xFFFC3F1D),
+                                  size: 20,
+                                )
+                              : null,
                         );
                       },
                     ),
         ),
+        // ── Мини-плеер ────────────────────────────────────────────
+        if (_queueIdx >= 0) _buildMiniPlayer(cs),
       ],
+    );
+  }
+
+  Widget _buildMiniPlayer(ColorScheme cs) {
+    final track = _queueIdx >= 0 && _queueIdx < _queue.length ? _queue[_queueIdx] : null;
+    if (track == null) return const SizedBox.shrink();
+
+    final progress = _dur.inMilliseconds > 0
+        ? (_pos.inMilliseconds / _dur.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
+
+    String fmt(Duration d) {
+      final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+      final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+      return '$m:$s';
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, -2))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Прогресс-бар
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+              trackHeight: 2,
+            ),
+            child: Slider(
+              value: progress,
+              min: 0,
+              max: 1,
+              activeColor: const Color(0xFFFC3F1D),
+              inactiveColor: cs.onSurface.withValues(alpha: 0.1),
+              onChanged: _dur.inMilliseconds > 0
+                  ? (v) => _player.seek(Duration(milliseconds: (v * _dur.inMilliseconds).round()))
+                  : null,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            child: Row(
+              children: [
+                // Обложка
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: track.coverUrl != null
+                      ? Image.network(track.coverUrl!, width: 42, height: 42, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _trackPlaceholder())
+                      : _trackPlaceholder(),
+                ),
+                const SizedBox(width: 10),
+                // Название + прогресс
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(track.title,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text(track.artist,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5))),
+                      Text('${fmt(_pos)} / ${fmt(_dur)}',
+                          style: TextStyle(fontSize: 10, color: cs.onSurface.withValues(alpha: 0.35))),
+                    ],
+                  ),
+                ),
+                // Управление
+                IconButton(
+                  icon: const Icon(Icons.skip_previous_rounded),
+                  iconSize: 26,
+                  color: cs.onSurface.withValues(alpha: 0.7),
+                  onPressed: _playPrev,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                ),
+                if (_playerLoading)
+                  const SizedBox(
+                    width: 32, height: 32,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFC3F1D)),
+                  )
+                else
+                  IconButton(
+                    icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                    iconSize: 32,
+                    color: const Color(0xFFFC3F1D),
+                    onPressed: _togglePlayPause,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.skip_next_rounded),
+                  iconSize: 26,
+                  color: cs.onSurface.withValues(alpha: 0.7),
+                  onPressed: _playNext,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

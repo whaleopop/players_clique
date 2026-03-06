@@ -54,6 +54,8 @@ dependencies:
   webview_flutter: ^4.0.0
   firebase_messaging: ^15.0.0
   googleapis_auth: ^1.6.0
+  audioplayers: ^6.0.0
+  crypto: ^3.0.0
 
 dependency_overrides:
   # win32 5.2.0 uses UnmodifiableUint8ListView removed in Dart 3.3+
