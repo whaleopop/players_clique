@@ -74,6 +74,22 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
             .orderBy('timestamp', descending: true)
             .snapshots()
         : const Stream.empty();
+    if (_currentUid != null) {
+      FirebaseFirestore.instance.collection('users').doc(_currentUid).set(
+        {'isOnline': true}, SetOptions(merge: true),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_currentUid != null) {
+      FirebaseFirestore.instance.collection('users').doc(_currentUid).set(
+        {'isOnline': false, 'lastSeen': FieldValue.serverTimestamp()},
+        SetOptions(merge: true),
+      );
+    }
+    super.dispose();
   }
 
   Future<File> cropImageToCircle(File file) async {
@@ -486,20 +502,19 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                                       ? Icon(Icons.person, size: _kAvatarRadius, color: Colors.white)
                                       : null,
                                 ),
+                                // Online indicator
                                 Positioned(
-                                  bottom: 2,
-                                  right: 2,
-                                  child: GestureDetector(
-                                    onTap: _pickFile,
-                                    child: Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF0071BC),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 2),
-                                      ),
-                                      child: const Icon(Icons.add_a_photo, color: Colors.white, size: 13),
+                                  bottom: 4,
+                                  right: 4,
+                                  child: Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      color: (data['isOnline'] as bool? ?? false)
+                                          ? Colors.green
+                                          : Colors.grey.shade400,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 2.5),
                                     ),
                                   ),
                                 ),
@@ -740,7 +755,33 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                   const SizedBox(height: 16),
                   const Text('Редактировать профиль',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+                  // Изменить фото профиля
+                  GestureDetector(
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await _pickFile();
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0071BC).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF0071BC).withValues(alpha: 0.2)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo_outlined, size: 18, color: Color(0xFF0071BC)),
+                          SizedBox(width: 8),
+                          Text('Изменить фото профиля',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF0071BC))),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   TextField(
                     controller: fioCtrl,
                     decoration: InputDecoration(
