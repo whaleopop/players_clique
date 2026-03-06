@@ -60,6 +60,8 @@ dependency_overrides:
   win32: ">=5.5.0 <6.0.0"
   # 2.0.17 uses removed v1 embedding API (PluginRegistry.Registrar)
   flutter_plugin_android_lifecycle: ">=2.0.22"
+  # 12.0.5 uses removed v1 embedding API (PluginRegistry.Registrar)
+  permission_handler_android: ">=12.0.6"
 
 dev_dependencies:
   flutter_test:
