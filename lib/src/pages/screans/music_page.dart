@@ -1,30 +1,23 @@
-import 'dart:async';
+import 'dart:io' show File;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import '../../services/music_service.dart';
 import '../../services/ynison_service.dart';
 
 const _oauthUrl =
     'https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d';
 const _oauthRedirectHost = 'music.yandex.ru';
 const _tokenKey = 'yandex_music_token';
-
-class _TrackInfo {
-  final String title;
-  final String artist;
-  final String? coverUrl;
-
-  const _TrackInfo({
-    required this.title,
-    required this.artist,
-    this.coverUrl,
-  });
-}
 
 class Music_Page extends StatefulWidget {
   const Music_Page({super.key});
@@ -36,21 +29,23 @@ class Music_Page extends StatefulWidget {
 const _kPageSize = 30;
 
 class _MusicPageState extends State<Music_Page> {
-  // ── Token / now-playing ───────────────────────────────────────────────────
+  // ── Token ─────────────────────────────────────────────────────────────────
   String? _token;
   bool _loading = true;
-  _TrackInfo? _currentTrack;
-  bool _trackLoading = false;
-  Timer? _refreshTimer;
 
   // ── Liked tracks (paginated) ──────────────────────────────────────────────
-  List<Map<String, String>> _allIds = [];   // all liked IDs from server
-  List<TrackInfo> _likedTracks = [];        // loaded details so far
+  List<Map<String, String>> _allIds = [];
+  List<TrackInfo> _likedTracks = [];
   bool _likedLoading = false;
   bool _likedLoadingMore = false;
   final _listCtrl = ScrollController();
 
+  // ── Search ────────────────────────────────────────────────────────────────
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
   // ── Player ────────────────────────────────────────────────────────────────
+  late MusicService _musicService;
   final _player = AudioPlayer();
   List<TrackInfo> _queue = [];
   int _queueIdx = -1;
@@ -62,23 +57,40 @@ class _MusicPageState extends State<Music_Page> {
   // ── My Wave ───────────────────────────────────────────────────────────────
   bool _waveLoading = false;
 
+  List<TrackInfo> get _filteredTracks => _searchQuery.isEmpty
+      ? _likedTracks
+      : _likedTracks.where((t) =>
+            t.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            t.artist.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+
   @override
   void initState() {
     super.initState();
     _player.onPositionChanged.listen((p) { if (mounted) setState(() => _pos = p); });
     _player.onDurationChanged.listen((d) { if (mounted) setState(() => _dur = d); });
     _player.onPlayerStateChanged.listen((s) {
-      if (mounted) setState(() => _isPlaying = s == PlayerState.playing);
+      final playing = s == PlayerState.playing;
+      if (mounted) {
+        setState(() => _isPlaying = playing);
+        _musicService.setPlaying(playing);
+      }
     });
     _player.onPlayerComplete.listen((_) => _playNext());
     _listCtrl.addListener(_onScroll);
+    _searchCtrl.addListener(() { if (mounted) setState(() => _searchQuery = _searchCtrl.text); });
     _loadToken();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _musicService = Provider.of<MusicService>(context, listen: false);
+  }
+
+  @override
   void dispose() {
-    _refreshTimer?.cancel();
     _listCtrl.dispose();
+    _searchCtrl.dispose();
     _player.dispose();
     super.dispose();
   }
@@ -136,12 +148,7 @@ class _MusicPageState extends State<Music_Page> {
   }
 
   void _startTracking() {
-    _fetchCurrentTrack();
     _loadAllLiked();
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _fetchCurrentTrack();
-    });
   }
 
   // ── Liked tracks pagination ───────────────────────────────────────────────
@@ -180,8 +187,17 @@ class _MusicPageState extends State<Music_Page> {
     final track = queue[index];
     if (track.id.isEmpty) return;
     setState(() { _queue = queue; _queueIdx = index; _playerLoading = true; _pos = Duration.zero; _dur = Duration.zero; });
+    _musicService.setCurrentTrack(track, isPlaying: false);
     try {
-      final url = await YnisonService.fetchTrackUrl(_token!, track.id);
+      // Сначала проверяем кастомную версию
+      String? url;
+      final uid = _uid;
+      if (uid != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users').doc(uid).collection('customTracks').doc(track.id).get();
+        url = doc.data()?['audioUrl'] as String?;
+      }
+      url ??= await YnisonService.fetchTrackUrl(_token!, track.id);
       if (!mounted) return;
       if (url == null) {
         setState(() => _playerLoading = false);
@@ -189,9 +205,41 @@ class _MusicPageState extends State<Music_Page> {
         return;
       }
       await _player.play(UrlSource(url));
-      if (mounted) setState(() => _playerLoading = false);
+      if (mounted) {
+        setState(() => _playerLoading = false);
+        _musicService.setCurrentTrack(track, isPlaying: true);
+      }
     } catch (_) {
       if (mounted) setState(() => _playerLoading = false);
+    }
+  }
+
+  Future<void> _replaceTrack(TrackInfo track) async {
+    final uid = _uid;
+    if (uid == null) return;
+    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Загрузка...')));
+    try {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final ref = FirebaseStorage.instance.ref().child('custom_tracks/$uid/${track.id}_$ts.mp3');
+      final task = (!kIsWeb && file.path != null)
+          ? ref.putFile(File(file.path!))
+          : ref.putData(file.bytes!);
+      final snap = await task;
+      final url = await snap.ref.getDownloadURL();
+      await FirebaseFirestore.instance
+          .collection('users').doc(uid).collection('customTracks').doc(track.id)
+          .set({'audioUrl': url, 'trackId': track.id, 'uploadedAt': FieldValue.serverTimestamp()});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Версия загружена')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      }
     }
   }
 
@@ -235,31 +283,6 @@ class _MusicPageState extends State<Music_Page> {
     }
   }
 
-  Future<void> _fetchCurrentTrack() async {
-    if (_token == null) return;
-    setState(() => _trackLoading = true);
-
-    try {
-      final info = await YnisonService.fetchCurrentTrack(_token!);
-      if (!mounted) return;
-      setState(() {
-        _currentTrack = info == null
-            ? null
-            : _TrackInfo(
-                title: info.title,
-                artist: info.artist,
-                coverUrl: info.coverUrl,
-              );
-        _trackLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _currentTrack = null;
-        _trackLoading = false;
-      });
-    }
-  }
 
   Future<void> _openOAuth() async {
     final token = await Navigator.push<String>(
@@ -276,14 +299,11 @@ class _MusicPageState extends State<Music_Page> {
   }
 
   Future<void> _logout() async {
-    _refreshTimer?.cancel();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await _removeTokenRemote();
-    setState(() {
-      _token = null;
-      _currentTrack = null;
-    });
+    _musicService.clear();
+    setState(() => _token = null);
   }
 
   @override
@@ -396,10 +416,29 @@ class _MusicPageState extends State<Music_Page> {
             ],
           ),
         ),
-        // ── Сейчас играет ────────────────────────────────────────
+        // ── Поиск ────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          child: _buildNowPlaying(cs),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              hintText: 'Поиск по трекам...',
+              prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFFFC3F1D)),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: () => _searchCtrl.clear(),
+                    )
+                  : null,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: cs.onSurface.withValues(alpha: 0.06),
+            ),
+          ),
         ),
         // ── Заголовок списка + Моя Волна ──────────────────────────
         Padding(
@@ -458,17 +497,19 @@ class _MusicPageState extends State<Music_Page> {
         Expanded(
           child: _likedLoading && _likedTracks.isEmpty
               ? const Center(child: CircularProgressIndicator(color: Color(0xFFFC3F1D)))
-              : _likedTracks.isEmpty
+              : _filteredTracks.isEmpty
                   ? Center(
-                      child: Text('Нет треков',
-                          style: TextStyle(color: cs.onSurface.withValues(alpha: 0.35))),
+                      child: Text(
+                        _searchQuery.isNotEmpty ? 'Ничего не найдено' : 'Нет треков',
+                        style: TextStyle(color: cs.onSurface.withValues(alpha: 0.35)),
+                      ),
                     )
                   : ListView.builder(
                       controller: _listCtrl,
                       padding: EdgeInsets.only(bottom: _queueIdx >= 0 ? 88 : 16),
-                      itemCount: _likedTracks.length + (_likedLoadingMore ? 1 : 0),
+                      itemCount: _filteredTracks.length + (_likedLoadingMore && _searchQuery.isEmpty ? 1 : 0),
                       itemBuilder: (context, i) {
-                        if (i == _likedTracks.length) {
+                        if (i == _filteredTracks.length) {
                           return const Padding(
                             padding: EdgeInsets.all(16),
                             child: Center(
@@ -476,13 +517,35 @@ class _MusicPageState extends State<Music_Page> {
                             ),
                           );
                         }
-                        final t = _likedTracks[i];
+                        final t = _filteredTracks[i];
                         final isActive = _queueIdx >= 0 &&
                             _queueIdx < _queue.length &&
                             _queue[_queueIdx].id == t.id;
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                          onTap: () => _playTrack(_likedTracks, i),
+                          onTap: () {
+                            final srcList = _searchQuery.isEmpty ? _likedTracks : _filteredTracks;
+                            _playTrack(srcList, i);
+                          },
+                          onLongPress: () => showModalBottomSheet(
+                            context: context,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                            ),
+                            builder: (_) => SafeArea(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.upload_file_rounded, color: Color(0xFFFC3F1D)),
+                                    title: const Text('Заменить версию'),
+                                    subtitle: const Text('Загрузить свой аудиофайл'),
+                                    onTap: () { Navigator.pop(context); _replaceTrack(t); },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(7),
                             child: t.coverUrl != null
@@ -634,131 +697,6 @@ class _MusicPageState extends State<Music_Page> {
         child: const Icon(Icons.music_note_rounded, color: Color(0xFFFC3F1D), size: 22),
       );
 
-  Widget _buildNowPlaying(ColorScheme cs) {
-    if (_trackLoading && _currentTrack == null) {
-      return const SizedBox(
-        height: 20,
-        width: 20,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: Color(0xFFFC3F1D),
-        ),
-      );
-    }
-
-    if (_currentTrack == null) {
-      return Text(
-        'Сейчас ничего не играет',
-        style: TextStyle(
-          fontSize: 13,
-          color: cs.onSurface.withValues(alpha: 0.35),
-        ),
-      );
-    }
-
-    final track = _currentTrack!;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 32),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cs.onSurface.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.onSurface.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        children: [
-          // Обложка
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: track.coverUrl != null
-                ? Image.network(
-                    track.coverUrl!,
-                    width: 52,
-                    height: 52,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _coverPlaceholder(),
-                  )
-                : _coverPlaceholder(),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.music_note_rounded,
-                        size: 11, color: Color(0xFFFC3F1D)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Сейчас играет',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: cs.onSurface.withValues(alpha: 0.4),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  track.title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  track.artist,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: cs.onSurface.withValues(alpha: 0.5),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          // Кнопка обновить
-          IconButton(
-            onPressed: _fetchCurrentTrack,
-            icon: _trackLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Color(0xFFFC3F1D),
-                    ),
-                  )
-                : Icon(Icons.refresh_rounded,
-                    size: 18,
-                    color: cs.onSurface.withValues(alpha: 0.35)),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _coverPlaceholder() {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFC3F1D).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Icon(Icons.music_note_rounded,
-          color: Color(0xFFFC3F1D), size: 24),
-    );
-  }
 
   Widget _yandexLogo() {
     return Container(

@@ -2,14 +2,14 @@ import 'dart:io';
 import 'dart:math';
 
 import '../../utils/web_update.dart';
-import '../../services/ynison_service.dart';
+import '../../services/music_service.dart';
+import 'artist_page.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:provider/provider.dart';
 import '../../components/buttons/blue_buttons.dart';
@@ -425,6 +425,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                   final bannerColorIdx = (data['bannerColorIndex'] as num?)?.toInt() ?? 0;
                   final bannerImageUrl = data['bannerImageUrl'] as String? ?? '';
                   final friends = (data['friends'] as List<dynamic>? ?? []).cast<String>();
+                  final isArtist = data['isArtist'] as bool? ?? false;
                   final cs = Theme.of(context).colorScheme;
 
                   return Column(
@@ -515,9 +516,42 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              fio,
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 0.3),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    fio,
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 0.3),
+                                  ),
+                                ),
+                                if (isArtist) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: _currentUid != null
+                                        ? () => Navigator.push(context,
+                                            MaterialPageRoute(builder: (_) => ArtistPage(uid: _currentUid!)))
+                                        : null,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFF6C63FF), Color(0xFFFC3F1D)],
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.star_rounded, size: 11, color: Colors.white),
+                                          SizedBox(width: 3),
+                                          Text('Артист', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             const SizedBox(height: 4),
                             if (status.isNotEmpty)
@@ -1151,128 +1185,76 @@ class _LikedBySectionState extends State<_LikedBySection> {
 
 // ── Now Playing ──────────────────────────────────────────────────────────────
 
-class _NowPlayingWidget extends StatefulWidget {
-  @override
-  State<_NowPlayingWidget> createState() => _NowPlayingWidgetState();
-}
-
-class _NowPlayingWidgetState extends State<_NowPlayingWidget> {
-  TrackInfo? _track;
-  bool _loaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('yandex_music_token');
-    if (token == null) {
-      if (mounted) setState(() => _loaded = true);
-      return;
-    }
-    try {
-      final info = await YnisonService.fetchCurrentTrack(token);
-      if (mounted) setState(() { _track = info; _loaded = true; });
-    } catch (_) {
-      if (mounted) setState(() => _loaded = true);
-    }
-  }
-
+class _NowPlayingWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    if (!_loaded || _track == null || _track!.paused) return const SizedBox.shrink();
+    return Consumer<MusicService>(
+      builder: (context, music, _) {
+        final track = music.currentTrack;
+        if (track == null) return const SizedBox.shrink();
 
-    final cs = Theme.of(context).colorScheme;
-    final track = _track!;
+        final cs = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFC3F1D).withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFC3F1D).withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          // Обложка
-          ClipRRect(
-            borderRadius: BorderRadius.circular(7),
-            child: track.coverUrl != null
-                ? Image.network(
-                    track.coverUrl!,
-                    width: 42, height: 42, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _coverPlaceholder(),
-                  )
-                : _coverPlaceholder(),
+        Widget coverPlaceholder() => Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFC3F1D).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: const Icon(Icons.music_note_rounded, color: Color(0xFFFC3F1D), size: 20),
+            );
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFC3F1D).withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFFC3F1D).withValues(alpha: 0.18)),
           ),
-          const SizedBox(width: 10),
-          // Информация о треке
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: track.coverUrl != null
+                    ? Image.network(track.coverUrl!, width: 42, height: 42, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => coverPlaceholder())
+                    : coverPlaceholder(),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.music_note_rounded, size: 10, color: Color(0xFFFC3F1D)),
-                    const SizedBox(width: 3),
-                    const Text(
-                      'Сейчас играет',
-                      style: TextStyle(fontSize: 10, color: Color(0xFFFC3F1D)),
-                    ),
+                    Row(children: [
+                      const Icon(Icons.music_note_rounded, size: 10, color: Color(0xFFFC3F1D)),
+                      const SizedBox(width: 3),
+                      Text(
+                        music.isPlaying ? 'Сейчас играет' : 'На паузе',
+                        style: const TextStyle(fontSize: 10, color: Color(0xFFFC3F1D)),
+                      ),
+                    ]),
+                    const SizedBox(height: 2),
+                    Text(track.title,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(track.artist,
+                        style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5)),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  track.title,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  track.artist,
-                  style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Бейдж Яндекса
-          Container(
-            width: 26, height: 26,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFC3F1D),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Center(
-              child: Text(
-                'Я',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  height: 1,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 26, height: 26,
+                decoration: BoxDecoration(color: const Color(0xFFFC3F1D), borderRadius: BorderRadius.circular(6)),
+                child: const Center(
+                  child: Text('Я', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold, height: 1)),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _coverPlaceholder() {
-    return Container(
-      width: 42, height: 42,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFC3F1D).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(7),
-      ),
-      child: const Icon(Icons.music_note_rounded, color: Color(0xFFFC3F1D), size: 20),
+        );
+      },
     );
   }
 }

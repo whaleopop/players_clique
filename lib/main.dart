@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:players_clique/firebase_options.dart';
 import 'package:players_clique/src/services/auth/auth_gate.dart';
 import 'package:players_clique/src/services/auth/auth_service.dart';
+import 'package:players_clique/src/services/music_service.dart';
 import 'package:players_clique/src/services/theme/theme_service.dart';
 import 'package:provider/provider.dart';
 
@@ -115,6 +116,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
+        ChangeNotifierProvider(create: (_) => MusicService()),
       ],
       child: const MyApp(),
     ),
