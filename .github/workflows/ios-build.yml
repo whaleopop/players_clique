@@ -1,4 +1,4 @@
-name: Flutter CI Build & Release
+name: Build & Release (Android + iOS)
 
 on:
   push:
@@ -6,23 +6,78 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build iOS & Android
-    runs-on: macos-latest
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 1: Bump build number and push back to master
+  # ────────────────────────────────────────────────────────────────────────────
+  prepare:
+    name: 📦 Prepare — Bump Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      new_build: ${{ steps.version.outputs.new_build }}
+      sha: ${{ steps.push.outputs.sha }}
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Extract & bump version
+        id: version
+        run: |
+          LINE=$(grep '^version:' pubspec.yaml)
+          VERSION=$(echo "$LINE" | sed 's/version: //; s/+.*//')
+          BUILD=$(echo "$LINE" | sed 's/.*+//')
+          [ -z "$BUILD" ] && BUILD=1
+          NEW_BUILD=$((BUILD + 1))
+          echo "version=$VERSION"   >> $GITHUB_OUTPUT
+          echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
+          sed -i "s/^version: .*/version: ${VERSION}+${NEW_BUILD}/" pubspec.yaml
+          echo "✅ Bumped to $VERSION+$NEW_BUILD"
+        shell: bash
+
+      - name: Commit & push
+        id: push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml
+          git commit -m "⬆️ Bump build to ${{ steps.version.outputs.new_build }}"
+          for i in {1..5}; do
+            git pull --rebase origin master && git push && break || {
+              echo "Push attempt $i failed, retrying in 3s..."
+              sleep 3
+            }
+          done
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        shell: bash
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 2: Android APK + AAB
+  # ────────────────────────────────────────────────────────────────────────────
+  build-android:
+    name: 🤖 Android APK
+    needs: prepare
+    runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      # ----------------------------
-      # Checkout
-      # ----------------------------
-      - name: Checkout repository
+      - name: Checkout (bumped commit)
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
-      # ----------------------------
-      # Flutter setup
-      # ----------------------------
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -32,30 +87,68 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      # ----------------------------
-      # Extract version from pubspec
-      # ----------------------------
-      - name: Extract version info
-        id: version
+      - name: Build APK
         run: |
-          LINE=$(grep '^version:' pubspec.yaml)
-          VERSION=$(echo $LINE | sed 's/version: //; s/+.*//')
-          BUILD=$(echo $LINE | sed 's/.*+//')
+          flutter build apk --release \
+            --build-name=${{ needs.prepare.outputs.version }} \
+            --build-number=${{ needs.prepare.outputs.new_build }}
 
-          if [ -z "$BUILD" ]; then
-            BUILD=1
-          fi
+      - name: Build AAB
+        run: |
+          flutter build appbundle --release \
+            --build-name=${{ needs.prepare.outputs.version }} \
+            --build-number=${{ needs.prepare.outputs.new_build }}
 
-          NEW_BUILD=$((BUILD + 1))
+      - name: Upload APK to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/app/outputs/flutter-apk/app-release.apk
+          asset_name: players-clique-v${{ needs.prepare.outputs.version }}+${{ needs.prepare.outputs.new_build }}.apk
+          tag: v${{ needs.prepare.outputs.version }}+${{ needs.prepare.outputs.new_build }}
+          release_name: "Players Clique v${{ needs.prepare.outputs.version }}+${{ needs.prepare.outputs.new_build }}"
+          body: |
+            🚀 Авто-сборка
 
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "build=$BUILD" >> $GITHUB_OUTPUT
-          echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
-        shell: bash
+            **Version:** ${{ needs.prepare.outputs.version }}
+            **Build:** ${{ needs.prepare.outputs.new_build }}
+          overwrite: true
+          make_latest: true
 
-      # ----------------------------
-      # CocoaPods cache
-      # ----------------------------
+      - name: Upload AAB to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/app/outputs/bundle/release/app-release.aab
+          asset_name: players-clique-v${{ needs.prepare.outputs.version }}+${{ needs.prepare.outputs.new_build }}.aab
+          tag: v${{ needs.prepare.outputs.version }}+${{ needs.prepare.outputs.new_build }}
+          overwrite: true
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 3: iOS IPA
+  # ────────────────────────────────────────────────────────────────────────────
+  build-ios:
+    name: 🍎 iOS IPA
+    needs: prepare
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (bumped commit)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          architecture: x64
+
+      - name: Get dependencies
+        run: flutter pub get
+
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
@@ -63,27 +156,24 @@ jobs:
           key: pods-${{ hashFiles('ios/Podfile.lock') }}
           restore-keys: pods-
 
-      # ----------------------------
-      # iOS build (NO CODESIGN)
-      # ----------------------------
-      - name: Pod install (with retry)
+      - name: Pod install (5 retries)
         run: |
           git config --global http.postBuffer 524288000
           git config --global http.lowSpeedLimit 0
           git config --global http.lowSpeedTime 999
           cd ios
           for i in 1 2 3 4 5; do
-            echo "Attempt $i..."
+            echo "🔄 Pod install attempt $i..."
             pod install --repo-update && break
-            echo "Failed, waiting $((i * 30))s..."
+            echo "❌ Failed, waiting $((i * 30))s..."
             sleep $((i * 30))
           done
 
-      - name: Build iOS
+      - name: Build iOS (no codesign)
         run: |
           flutter build ios --release --no-codesign \
-            --build-name=${{ steps.version.outputs.version }} \
-            --build-number=${{ steps.version.outputs.new_build }}
+            --build-name=${{ needs.prepare.outputs.version }} \
+            --build-number=${{ needs.prepare.outputs.new_build }}
         env:
           CODE_SIGNING_ALLOWED: "NO"
           CODE_SIGNING_REQUIRED: "NO"
@@ -93,59 +183,15 @@ jobs:
         run: |
           cd build/ios/iphoneos
           mkdir -p Payload
-          mv Runner.app Payload/
+          cp -r Runner.app Payload/
           zip -qq -r -9 FlutterApp.ipa Payload
-
-      # ----------------------------
-      # Android build
-      # ----------------------------
-      - name: Build Android APK
-        run: |
-          flutter build apk --release \
-            --build-name=${{ steps.version.outputs.version }} \
-            --build-number=${{ steps.version.outputs.new_build }}
-
-      # ----------------------------
-      # Upload artifacts (Actions tab)
-      # ----------------------------
-      - name: Upload iOS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: iOS-IPA
-          path: build/ios/iphoneos/FlutterApp.ipa
-
-      - name: Upload Android Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Android-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
-
-      # ----------------------------
-      # Create GitHub Release
-      # ----------------------------
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}
-          name: v${{ steps.version.outputs.version }}+${{ steps.version.outputs.new_build }}
-          body: |
-            🚀 Auto build release
-            
-            Version: ${{ steps.version.outputs.version }}
-            Build: ${{ steps.version.outputs.new_build }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ls -lh FlutterApp.ipa
 
       - name: Upload IPA to Release
-        uses: softprops/action-gh-release@v2
+        uses: svenstaro/upload-release-action@v2
         with:
-          files: build/ios/iphoneos/FlutterApp.ipa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload APK to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build/app/outputs/flutter-apk/app-release.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/ios/iphoneos/FlutterApp.ipa
+          asset_name: players-clique-v${{ needs.prepare.outputs.version }}+${{ needs.prepare.outputs.new_build }}.ipa
+          tag: v${{ needs.prepare.outputs.version }}+${{ needs.prepare.outputs.new_build }}
+          overwrite: true
