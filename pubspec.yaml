@@ -58,6 +58,8 @@ dependencies:
 dependency_overrides:
   # win32 5.2.0 uses UnmodifiableUint8ListView removed in Dart 3.3+
   win32: ">=5.5.0 <6.0.0"
+  # 2.0.17 uses removed v1 embedding API (PluginRegistry.Registrar)
+  flutter_plugin_android_lifecycle: ">=2.0.22"
 
 dev_dependencies:
   flutter_test:
