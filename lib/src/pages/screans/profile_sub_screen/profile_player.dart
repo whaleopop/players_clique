@@ -112,7 +112,7 @@ class _ProfilePlayerState extends State<Profile_Player> {
                   // Avatar
                   CircleAvatar(
                     radius: 52,
-                    backgroundColor: Colors.lightBlue.shade100,
+                    backgroundColor: const Color(0xFFCCE5CC),
                     backgroundImage: photo.isNotEmpty
                         ? NetworkImage(photo)
                         : null,
@@ -364,7 +364,7 @@ class _FriendTileState extends State<_FriendTile> {
       leading: GestureDetector(
         onTap: () => _openProfile(context),
         child: CircleAvatar(
-          backgroundColor: Colors.lightBlue.shade100,
+          backgroundColor: const Color(0xFFCCE5CC),
           backgroundImage: photo.isNotEmpty ? NetworkImage(photo) : null,
           child: photo.isEmpty
               ? const Icon(Icons.person, color: Colors.white)

@@ -362,7 +362,7 @@ class _ChatPageState extends State<ChatPage> {
                 backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
                     ? NetworkImage(_avatarUrl!) as ImageProvider
                     : null,
-                backgroundColor: Colors.lightBlue.shade100,
+                backgroundColor: const Color(0xFFCCE5CC),
                 child: (_avatarUrl == null || _avatarUrl!.isEmpty)
                     ? const Icon(Icons.person, color: Colors.white, size: 20)
                     : null,
@@ -479,7 +479,7 @@ class _ChatPageState extends State<ChatPage> {
               backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
                   ? NetworkImage(_avatarUrl!) as ImageProvider
                   : null,
-              backgroundColor: Colors.lightBlue.shade100,
+              backgroundColor: const Color(0xFFCCE5CC),
               child: (_avatarUrl == null || _avatarUrl!.isEmpty)
                   ? const Icon(Icons.person, color: Colors.white, size: 14)
                   : null,

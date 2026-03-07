@@ -23,7 +23,7 @@ class BlueButton extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: Colors.lightBlue,
+          color: const Color(0xFF366837),
           boxShadow: [
             BoxShadow(
               color: Color(0x3F000000),

@@ -140,7 +140,7 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF366837),
           ),
-          scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+          scaffoldBackgroundColor: const Color(0xFFF1F6F1),
           appBarTheme: const AppBarTheme(
             backgroundColor: Color(0xFF366837),
             foregroundColor: Colors.white,
@@ -163,25 +163,25 @@ class MyApp extends StatelessWidget {
             seedColor: const Color(0xFF366837),
             brightness: Brightness.dark,
           ),
-          scaffoldBackgroundColor: const Color(0xFF0D1117),
+          scaffoldBackgroundColor: const Color(0xFF0D1510),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF161B22),
+            backgroundColor: Color(0xFF162218),
             foregroundColor: Colors.white,
             elevation: 0,
             centerTitle: true,
           ),
           cardTheme: CardThemeData(
-            color: const Color(0xFF21262D),
+            color: const Color(0xFF1C2C1E),
             elevation: 2,
             shadowColor: Colors.black.withValues(alpha: 0.3),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16)),
           ),
           dialogTheme: const DialogThemeData(
-            backgroundColor: Color(0xFF161B22),
+            backgroundColor: Color(0xFF162218),
           ),
           bottomSheetTheme: const BottomSheetThemeData(
-            backgroundColor: Color(0xFF161B22),
+            backgroundColor: Color(0xFF162218),
           ),
           dividerColor: Colors.white12,
         ),

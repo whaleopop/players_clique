@@ -22,7 +22,7 @@ class BlueButtonsIcon extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.only(left: 30, right: 30, bottom: 5, top: 5),
           decoration: BoxDecoration(
-            color: Colors.lightBlue,
+            color: const Color(0xFF366837),
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(

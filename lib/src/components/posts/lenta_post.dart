@@ -279,7 +279,7 @@ class _LentaPostState extends State<LentaPost> {
 
   Widget _avatarFallback() {
     return Container(
-      color: Colors.lightBlue.shade100,
+      color: const Color(0xFFCCE5CC),
       child: const Icon(Icons.person, size: 18, color: Colors.white),
     );
   }

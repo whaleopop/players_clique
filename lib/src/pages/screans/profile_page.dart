@@ -27,7 +27,7 @@ import '../../components/posts/video_player_section.dart';
 
 
 const List<List<Color>> _kBannerGradients = [
-  [Color(0xFF366837), Color(0xFFC84926)],
+  [Color(0xFF1A3D1C), Color(0xFF366837)],
   [Color(0xFF6C63FF), Color(0xFFB39DDB)],
   [Color(0xFFFC3F1D), Color(0xFFFF8C69)],
   [Color(0xFF00897B), Color(0xFF4DB6AC)],
@@ -520,7 +520,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                               children: [
                                 CircleAvatar(
                                   radius: _kAvatarRadius,
-                                  backgroundColor: Colors.lightBlue.shade100,
+                                  backgroundColor: const Color(0xFFCCE5CC),
                                   backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
                                   child: photoUrl.isEmpty
                                       ? const Icon(Icons.person, size: _kAvatarRadius, color: Colors.white)
@@ -990,7 +990,7 @@ class _FriendTileState extends State<_FriendTile> {
         backgroundImage: (_photo != null && _photo!.isNotEmpty)
             ? NetworkImage(_photo!) as ImageProvider
             : null,
-        backgroundColor: Colors.lightBlue.shade100,
+        backgroundColor: const Color(0xFFCCE5CC),
         child: (_photo == null || _photo!.isEmpty)
             ? const Icon(Icons.person, color: Colors.white)
             : null,

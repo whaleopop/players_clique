@@ -100,7 +100,7 @@ class _MessageProfileState extends State<MessageProfile> {
                       radius: 28,
                       backgroundImage: widget.iconProfile,
                       onBackgroundImageError: (_, __) {},
-                      backgroundColor: Colors.lightBlue.shade100,
+                      backgroundColor: const Color(0xFFCCE5CC),
                     ),
                     if (hasUnread)
                       Positioned(
@@ -110,7 +110,7 @@ class _MessageProfileState extends State<MessageProfile> {
                           width: 14,
                           height: 14,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF366837),
+                            color: const Color(0xFFC84926),
                             shape: BoxShape.circle,
                             border: Border.all(color: scaffoldBg, width: 2),
                           ),

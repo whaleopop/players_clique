@@ -201,7 +201,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                             radius: 16,
                             backgroundImage:
                                 photo.isNotEmpty ? NetworkImage(photo) : null,
-                            backgroundColor: Colors.lightBlue.shade100,
+                            backgroundColor: const Color(0xFFCCE5CC),
                             child: photo.isEmpty
                                 ? const Icon(Icons.person,
                                     size: 16, color: Colors.white)
