@@ -123,7 +123,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
       int size = min(image.width, image.height);
       int x = (image.width - size) ~/ 2;
       int y = (image.height - size) ~/ 2;
-      return img.copyCrop(image, x, y, size, size);
+      return img.copyCrop(image, x: x, y: y, width: size, height: size);
     }
     img.Image resizeToSquare(img.Image image, {int size = 1080}) {
       int newWidth = size;

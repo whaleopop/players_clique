@@ -58,7 +58,7 @@ class _AddPostPageState extends State<Add_Post_Page> {
       final size = min(image.width, image.height);
       final x = (image.width - size) ~/ 2;
       final y = (image.height - size) ~/ 2;
-      return img.copyCrop(image, x, y, size, size);
+      return img.copyCrop(image, x: x, y: y, width: size, height: size);
     }
 
     setState(() {
