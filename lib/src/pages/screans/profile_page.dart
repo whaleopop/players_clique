@@ -686,8 +686,15 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
               SliverFillRemaining(
                 child: TabBarView(
                   children: [
-                    _buildPostsTab(),
-                    _buildMusicTab(),
+                    _ProfilePostsTab(
+                      postsStream: _postsStream,
+                      buildPostTile: _buildPostTile,
+                    ),
+                    _ProfileMusicTab(
+                      postsStream: _postsStream,
+                      showPostDetail: _showPostDetail,
+                      musicCoverPlaceholder: _musicCoverPlaceholder,
+                    ),
                   ],
                 ),
               ),
@@ -698,132 +705,6 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     );
   }
 
-  Widget _buildPostsTab() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _postsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final docs = (snapshot.data?.docs ?? []).where((d) {
-          final data = d.data() as Map<String, dynamic>;
-          return (data['mediaType'] as String? ?? 'image') != 'trackReplace';
-        }).toList();
-        if (docs.isEmpty) {
-          return const Center(
-            child: Text('Нет постов', style: TextStyle(color: Colors.grey)),
-          );
-        }
-        return GridView.builder(
-          padding: EdgeInsets.zero,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 2,
-            mainAxisSpacing: 2,
-          ),
-          itemCount: docs.length,
-          itemBuilder: (context, index) => _buildPostTile(docs[index]),
-        );
-      },
-    );
-  }
-
-  Widget _buildMusicTab() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _postsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final docs = (snapshot.data?.docs ?? []).where((d) {
-          final data = d.data() as Map<String, dynamic>;
-          return (data['mediaType'] as String?) == 'trackReplace';
-        }).toList();
-        if (docs.isEmpty) {
-          return const Center(
-            child: Text('Нет замен треков', style: TextStyle(color: Colors.grey)),
-          );
-        }
-        return ListView.builder(
-          itemCount: docs.length,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
-            final title = data['trackTitle'] as String? ?? data['namePost'] as String? ?? '';
-            final artist = data['trackArtist'] as String? ?? data['descPost'] as String? ?? '';
-            final cover = data['trackCoverUrl'] as String? ?? data['imageUrl'] as String? ?? '';
-            return GestureDetector(
-              onTap: () => _showPostDetail(docs[index]),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1A1A2E), Color(0xFF0F3460)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: cover.isNotEmpty
-                                ? CachedNetworkImage(imageUrl: cover, width: 60, height: 60, fit: BoxFit.cover,
-                                    errorWidget: (_, __, ___) => _musicCoverPlaceholder())
-                                : _musicCoverPlaceholder(),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFC107),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.bolt_rounded, size: 10, color: Color(0xFF5D4037)),
-                                      SizedBox(width: 3),
-                                      Text('Лега заменил трек', style: TextStyle(
-                                          color: Color(0xFF5D4037), fontSize: 10, fontWeight: FontWeight.w800)),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                                const SizedBox(height: 2),
-                                Text(artist, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                      child: Image.asset('assets/image/swag.jpg', fit: BoxFit.cover, height: 140),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   void _openFriendsList(List<String> friendUids) {
     showModalBottomSheet(
@@ -1098,6 +979,183 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
+}
+
+class _ProfilePostsTab extends StatefulWidget {
+  final Stream<QuerySnapshot> postsStream;
+  final Widget Function(DocumentSnapshot) buildPostTile;
+  const _ProfilePostsTab({required this.postsStream, required this.buildPostTile});
+
+  @override
+  State<_ProfilePostsTab> createState() => _ProfilePostsTabState();
+}
+
+class _ProfilePostsTabState extends State<_ProfilePostsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return StreamBuilder<QuerySnapshot>(
+      stream: widget.postsStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data!.docs.where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return (data['mediaType'] as String? ?? 'image') != 'trackReplace';
+        }).toList();
+        if (docs.isEmpty) {
+          return const Center(
+            child: Text('Нет постов', style: TextStyle(color: Colors.grey)),
+          );
+        }
+        return GridView.builder(
+          padding: EdgeInsets.zero,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
+          ),
+          itemCount: docs.length,
+          itemBuilder: (context, index) => widget.buildPostTile(docs[index]),
+        );
+      },
+    );
+  }
+}
+
+class _ProfileMusicTab extends StatefulWidget {
+  final Stream<QuerySnapshot> postsStream;
+  final void Function(DocumentSnapshot) showPostDetail;
+  final Widget Function() musicCoverPlaceholder;
+  const _ProfileMusicTab({
+    required this.postsStream,
+    required this.showPostDetail,
+    required this.musicCoverPlaceholder,
+  });
+
+  @override
+  State<_ProfileMusicTab> createState() => _ProfileMusicTabState();
+}
+
+class _ProfileMusicTabState extends State<_ProfileMusicTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return StreamBuilder<QuerySnapshot>(
+      stream: widget.postsStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data!.docs.where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return (data['mediaType'] as String?) == 'trackReplace';
+        }).toList();
+        if (docs.isEmpty) {
+          return const Center(
+            child: Text('Нет замен треков', style: TextStyle(color: Colors.grey)),
+          );
+        }
+        return ListView.builder(
+          itemCount: docs.length,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final title = data['trackTitle'] as String? ?? data['namePost'] as String? ?? '';
+            final artist = data['trackArtist'] as String? ?? data['descPost'] as String? ?? '';
+            final cover = data['trackCoverUrl'] as String? ?? data['imageUrl'] as String? ?? '';
+            return GestureDetector(
+              onTap: () => widget.showPostDetail(docs[index]),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1A1A2E), Color(0xFF0F3460)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: cover.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: cover,
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (_, __, ___) => widget.musicCoverPlaceholder(),
+                                  )
+                                : widget.musicCoverPlaceholder(),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFC107),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.bolt_rounded, size: 10, color: Color(0xFF5D4037)),
+                                      SizedBox(width: 3),
+                                      Text('Лега заменил трек', style: TextStyle(
+                                          color: Color(0xFF5D4037), fontSize: 10, fontWeight: FontWeight.w800)),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                                const SizedBox(height: 2),
+                                Text(artist,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                      child: Image.asset('assets/image/swag.jpg', fit: BoxFit.cover, height: 140),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _FriendTile extends StatefulWidget {
