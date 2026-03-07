@@ -441,7 +441,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                   final bannerColorIdx = (data['bannerColorIndex'] as num?)?.toInt() ?? 0;
                   final bannerImageUrl = data['bannerImageUrl'] as String? ?? '';
                   final friends = (data['friends'] as List<dynamic>? ?? []).cast<String>();
-                  final isArtist = data['isArtist'] as bool? ?? false;
+                  final isLegend = data['isLegend'] as bool? ?? false;
                   final cs = Theme.of(context).colorScheme;
 
                   return Column(
@@ -540,7 +540,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 0.3),
                                   ),
                                 ),
-                                if (isArtist) ...[
+                                if (isLegend) ...[
                                   const SizedBox(width: 8),
                                   GestureDetector(
                                     onTap: _currentUid != null
@@ -550,17 +550,22 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [Color(0xFF6C63FF), Color(0xFFFC3F1D)],
-                                        ),
+                                        color: const Color(0xFFFFC107),
                                         borderRadius: BorderRadius.circular(20),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFFFFC107).withValues(alpha: 0.4),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                       ),
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.star_rounded, size: 11, color: Colors.white),
+                                          Icon(Icons.bolt_rounded, size: 11, color: Color(0xFF5D4037)),
                                           SizedBox(width: 3),
-                                          Text('Артист', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                          Text('Лега', style: TextStyle(color: Color(0xFF5D4037), fontSize: 11, fontWeight: FontWeight.w800)),
                                         ],
                                       ),
                                     ),

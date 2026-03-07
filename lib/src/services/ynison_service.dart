@@ -11,6 +11,7 @@ class TrackInfo {
   final String id;
   final String title;
   final String artist;
+  final String artistId;
   final String? coverUrl;
   final bool paused;
 
@@ -18,9 +19,17 @@ class TrackInfo {
     this.id = '',
     required this.title,
     required this.artist,
+    this.artistId = '',
     this.coverUrl,
     this.paused = false,
   });
+}
+
+class ArtistInfo {
+  final String id;
+  final String name;
+  final String? coverUrl;
+  const ArtistInfo({required this.id, required this.name, this.coverUrl});
 }
 
 class YnisonService {
@@ -136,11 +145,12 @@ class YnisonService {
   static TrackInfo _parseTrack(dynamic t) {
     final id = t['id']?.toString() ?? '';
     final title = t['title'] as String? ?? 'Неизвестный трек';
-    final artist = (t['artists'] as List?)
-            ?.map((a) => a['name'] as String? ?? '')
+    final artists = t['artists'] as List? ?? [];
+    final artist = artists
+            .map((a) => a['name'] as String? ?? '')
             .where((n) => n.isNotEmpty)
-            .join(', ') ??
-        'Неизвестный артист';
+            .join(', ');
+    final artistId = (artists.isNotEmpty ? artists[0]['id']?.toString() : null) ?? '';
     String? coverUrl;
     final albums = t['albums'] as List?;
     if (albums != null && albums.isNotEmpty) {
@@ -149,7 +159,55 @@ class YnisonService {
         coverUrl = 'https://${rawUri.replaceFirst('//', '').replaceAll('%%', '200x200')}';
       }
     }
-    return TrackInfo(id: id, title: title, artist: artist, coverUrl: coverUrl);
+    return TrackInfo(
+      id: id,
+      title: title,
+      artist: artist.isEmpty ? 'Неизвестный артист' : artist,
+      artistId: artistId,
+      coverUrl: coverUrl,
+    );
+  }
+
+  // ── Search ────────────────────────────────────────────────────────────────
+
+  static Future<List<TrackInfo>> searchTracks(String token, String query) async {
+    if (query.isEmpty) return [];
+    final resp = await http.get(
+      Uri.parse('$_base/search?text=${Uri.encodeComponent(query)}&type=track&page=0'),
+      headers: {'Authorization': 'OAuth $token'},
+    ).timeout(const Duration(seconds: 10));
+    if (resp.statusCode != 200) return [];
+    final results = (jsonDecode(resp.body)['result']?['tracks']?['results'] as List?) ?? [];
+    return results.map(_parseTrack).toList();
+  }
+
+  // ── Artist ────────────────────────────────────────────────────────────────
+
+  static Future<ArtistInfo?> fetchArtistInfo(String token, String artistId) async {
+    final resp = await http.get(
+      Uri.parse('$_base/artists/$artistId/brief-info'),
+      headers: {'Authorization': 'OAuth $token'},
+    ).timeout(const Duration(seconds: 10));
+    if (resp.statusCode != 200) return null;
+    final a = jsonDecode(resp.body)['result']?['artist'] as Map<String, dynamic>?;
+    if (a == null) return null;
+    final name = a['name'] as String? ?? '';
+    String? coverUrl;
+    final rawCover = a['cover']?['uri'] as String?;
+    if (rawCover != null) {
+      coverUrl = 'https://${rawCover.replaceFirst('//', '').replaceAll('%%', '300x300')}';
+    }
+    return ArtistInfo(id: artistId, name: name, coverUrl: coverUrl);
+  }
+
+  static Future<List<TrackInfo>> fetchArtistTracks(String token, String artistId, {int page = 0}) async {
+    final resp = await http.get(
+      Uri.parse('$_base/artists/$artistId/tracks?page=$page&pageSize=30'),
+      headers: {'Authorization': 'OAuth $token'},
+    ).timeout(const Duration(seconds: 10));
+    if (resp.statusCode != 200) return [];
+    final list = (jsonDecode(resp.body)['result']?['tracks'] as List?) ?? [];
+    return list.map(_parseTrack).toList();
   }
 
   static String _deviceId() {
