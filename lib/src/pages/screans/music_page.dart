@@ -270,9 +270,21 @@ class _MusicPageState extends State<Music_Page> {
     final uid = _uid;
     if (uid == null) return;
 
-    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
-    if (result == null || result.files.isEmpty) return;
-    final file = result.files.first;
+    PlatformFile? file;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        withData: kIsWeb,
+      );
+      if (result == null || result.files.isEmpty) return;
+      file = result.files.first;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Не удалось открыть файл: $e')));
+      }
+      return;
+    }
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)
@@ -707,7 +719,7 @@ class _MusicPageState extends State<Music_Page> {
                   Navigator.pop(context);
                   Future.delayed(
                     const Duration(milliseconds: 350),
-                    () => _replaceTrack(t),
+                    () { if (mounted) _replaceTrack(t); },
                   );
                 },
               ),

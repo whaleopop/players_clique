@@ -79,9 +79,21 @@ class _ArtistPageState extends State<ArtistPage> {
   }
 
   Future<void> _uploadTrack() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
-    if (result == null || result.files.isEmpty) return;
-    final file = result.files.first;
+    PlatformFile? file;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        withData: kIsWeb,
+      );
+      if (result == null || result.files.isEmpty) return;
+      file = result.files.first;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Не удалось открыть файл: $e')));
+      }
+      return;
+    }
     if (!mounted) return;
     setState(() => _uploading = true);
     try {
