@@ -114,7 +114,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0071BC)),
+                backgroundColor: const Color(0xFF366837)),
             onPressed: () async {
               Navigator.pop(context);
               final newText = ctrl.text.trim();
@@ -252,7 +252,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                       borderRadius: BorderRadius.circular(6),
                                       border: const Border(
                                         left: BorderSide(
-                                          color: Color(0xFF0071BC),
+                                          color: Color(0xFF366837),
                                           width: 2.5,
                                         ),
                                       ),
@@ -266,7 +266,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                             style: const TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w600,
-                                              color: Color(0xFF0071BC),
+                                              color: Color(0xFF366837),
                                             ),
                                           ),
                                         Text(
@@ -309,7 +309,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
             padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
             child: Row(
               children: [
-                Container(width: 3, height: 32, color: const Color(0xFF0071BC)),
+                Container(width: 3, height: 32, color: const Color(0xFF366837)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -319,7 +319,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       Text(
                         _replyTo!['fio'] as String,
                         style: const TextStyle(
-                          color: Color(0xFF0071BC),
+                          color: Color(0xFF366837),
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
@@ -384,7 +384,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                   width: 38,
                   height: 38,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF0071BC),
+                    color: Color(0xFF366837),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.send_rounded,

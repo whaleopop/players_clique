@@ -249,7 +249,7 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             const SizedBox(height: 8),
             ListTile(
-              leading: const Icon(Icons.reply_outlined, color: Color(0xFF0071BC)),
+              leading: const Icon(Icons.reply_outlined, color: Color(0xFF366837)),
               title: const Text('Ответить'),
               onTap: () {
                 Navigator.pop(sheetCtx);
@@ -310,7 +310,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0071BC)),
+                backgroundColor: const Color(0xFF366837)),
             onPressed: () async {
               Navigator.pop(context);
               final newText = ctrl.text.trim();
@@ -513,7 +513,7 @@ class _ChatPageState extends State<ChatPage> {
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
       child: Row(
         children: [
-          Container(width: 3, height: 36, color: const Color(0xFF0071BC)),
+          Container(width: 3, height: 36, color: const Color(0xFF366837)),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -523,7 +523,7 @@ class _ChatPageState extends State<ChatPage> {
                 Text(
                   _replyToData!['senderName'] as String,
                   style: const TextStyle(
-                    color: Color(0xFF0071BC),
+                    color: Color(0xFF366837),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -564,12 +564,12 @@ class _ChatPageState extends State<ChatPage> {
               onPressed: () => setState(() => _showStickers = !_showStickers),
               icon: Icon(
                 _showStickers ? Icons.keyboard : Icons.sticky_note_2_outlined,
-                color: const Color(0xFF0071BC),
+                color: const Color(0xFF366837),
               ),
             ),
             IconButton(
               onPressed: _isSending ? null : _sendImage,
-              icon: const Icon(Icons.image_outlined, color: Color(0xFF0071BC)),
+              icon: const Icon(Icons.image_outlined, color: Color(0xFF366837)),
             ),
             Expanded(
               child: TextField(
@@ -602,7 +602,7 @@ class _ChatPageState extends State<ChatPage> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: _isSending ? Colors.grey : const Color(0xFF0071BC),
+                  color: _isSending ? Colors.grey : const Color(0xFF366837),
                   shape: BoxShape.circle,
                 ),
                 child: _isSending

@@ -110,7 +110,7 @@ class _MessageProfileState extends State<MessageProfile> {
                           width: 14,
                           height: 14,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0071BC),
+                            color: const Color(0xFF366837),
                             shape: BoxShape.circle,
                             border: Border.all(color: scaffoldBg, width: 2),
                           ),

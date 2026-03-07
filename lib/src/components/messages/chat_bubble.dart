@@ -43,7 +43,7 @@ class ChatBubble extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 260),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isMe ? const Color(0xFF0071BC) : cs.surface,
+        color: isMe ? const Color(0xFF366837) : cs.surface,
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(18),
           topRight: const Radius.circular(18),
@@ -74,7 +74,7 @@ class ChatBubble extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border(
                   left: BorderSide(
-                    color: isMe ? Colors.white70 : const Color(0xFF0071BC),
+                    color: isMe ? Colors.white70 : const Color(0xFF366837),
                     width: 3,
                   ),
                 ),
@@ -88,7 +88,7 @@ class ChatBubble extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: isMe ? Colors.white70 : const Color(0xFF0071BC),
+                        color: isMe ? Colors.white70 : const Color(0xFF366837),
                       ),
                     ),
                   Text(

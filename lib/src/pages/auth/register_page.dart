@@ -74,9 +74,9 @@ class _MyRegisterPage extends State<MyRegisterPage> {
               ),
               const SizedBox(height: 10),
               const Text(
-                'Players Clique',
+                'РКН Российская Коммуна Никиты',
                 style: TextStyle(
-                  color: Color(0xFF0071BC),
+                  color: Color(0xFF366837),
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.2,
@@ -151,7 +151,7 @@ class _MyRegisterPage extends State<MyRegisterPage> {
                         'Уже есть аккаунт? Войти',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Color(0xFF0071BC),
+                          color: Color(0xFF366837),
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),

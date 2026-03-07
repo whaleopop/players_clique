@@ -182,7 +182,7 @@ class _Posts_Page extends State<Posts_Page> with AutomaticKeepAliveClientMixin {
           child: Row(
             children: [
               _chip(Icons.people_outline, '$total игроков',
-                  const Color(0xFF0071BC)),
+                  const Color(0xFF366837)),
               const SizedBox(width: 16),
               _chip(Icons.circle, '$online онлайн', Colors.green),
             ],

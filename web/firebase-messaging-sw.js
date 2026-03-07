@@ -16,7 +16,7 @@ const messaging = firebase.messaging();
 // Handle background messages (tab is closed or in background).
 messaging.onBackgroundMessage((payload) => {
   const notification = payload.notification ?? {};
-  const title = notification.title ?? "Players Clique";
+  const title = notification.title ?? "РКН Российская Коммуна Никиты";
   const body = notification.body ?? "";
 
   self.registration.showNotification(title, {

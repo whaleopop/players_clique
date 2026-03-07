@@ -184,7 +184,7 @@ class _AddPostPageState extends State<Add_Post_Page> {
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF0071BC)),
+              color: Color(0xFF366837)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -210,7 +210,7 @@ class _AddPostPageState extends State<Add_Post_Page> {
               child: const Text(
                 'Опубликовать',
                 style: TextStyle(
-                    color: Color(0xFF0071BC), fontWeight: FontWeight.bold),
+                    color: Color(0xFF366837), fontWeight: FontWeight.bold),
               ),
             ),
         ],
@@ -304,7 +304,7 @@ class _AddPostPageState extends State<Add_Post_Page> {
             ElevatedButton(
               onPressed: _isLoading ? null : _createPost,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0071BC),
+                backgroundColor: const Color(0xFF366837),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -343,7 +343,7 @@ class _AddPostPageState extends State<Add_Post_Page> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0071BC) : Colors.transparent,
+            color: isSelected ? const Color(0xFF366837) : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -418,7 +418,7 @@ class _AddPostPageState extends State<Add_Post_Page> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.videocam_rounded,
-              size: 56, color: Color(0xFF0071BC)),
+              size: 56, color: Color(0xFF366837)),
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),

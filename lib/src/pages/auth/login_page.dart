@@ -47,9 +47,9 @@ class _MyLoginPage extends State<MyLoginPage> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Players Clique',
+                'РКН Российская Коммуна Никиты',
                 style: TextStyle(
-                  color: Color(0xFF0071BC),
+                  color: Color(0xFF366837),
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.2,
@@ -110,7 +110,7 @@ class _MyLoginPage extends State<MyLoginPage> {
                         'Ещё нет аккаунта? Зарегистрироваться',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Color(0xFF0071BC),
+                          color: Color(0xFF366837),
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),

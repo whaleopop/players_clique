@@ -52,7 +52,7 @@ void _showForegroundNotificationBanner(RemoteMessage message) {
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      backgroundColor: const Color(0xFF0071BC),
+      backgroundColor: const Color(0xFF366837),
       duration: const Duration(seconds: 4),
       content: Row(
         children: [
@@ -138,11 +138,11 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           brightness: Brightness.light,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF0071BC),
+            seedColor: const Color(0xFF366837),
           ),
           scaffoldBackgroundColor: const Color(0xFFF5F7FA),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF0071BC),
+            backgroundColor: Color(0xFF366837),
             foregroundColor: Colors.white,
             elevation: 0,
             centerTitle: true,
@@ -160,7 +160,7 @@ class MyApp extends StatelessWidget {
         darkTheme: ThemeData(
           brightness: Brightness.dark,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF0071BC),
+            seedColor: const Color(0xFF366837),
             brightness: Brightness.dark,
           ),
           scaffoldBackgroundColor: const Color(0xFF0D1117),
@@ -220,7 +220,7 @@ class MyApp extends StatelessWidget {
                                   fontSize: 15,
                                   color: isDark
                                       ? Colors.white
-                                      : const Color(0xFF0071BC),
+                                      : const Color(0xFF366837),
                                 ),
                               ),
                             ),

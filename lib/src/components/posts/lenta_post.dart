@@ -198,7 +198,7 @@ class _LentaPostState extends State<LentaPost> {
                                         progress.expectedTotalBytes!
                                     : null,
                                 strokeWidth: 2,
-                                color: const Color(0xFF0071BC),
+                                color: const Color(0xFF366837),
                               ),
                             ),
                           );

@@ -87,7 +87,7 @@ class _ProfilePlayerState extends State<Profile_Player> {
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF0071BC)),
+              color: Color(0xFF366837)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -153,7 +153,7 @@ class _ProfilePlayerState extends State<Profile_Player> {
                       icon: const Icon(Icons.chat_bubble_outline, size: 18),
                       label: const Text('Написать'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0071BC),
+                        backgroundColor: const Color(0xFF366837),
                         foregroundColor: Colors.white,
                         padding:
                             const EdgeInsets.symmetric(vertical: 12),

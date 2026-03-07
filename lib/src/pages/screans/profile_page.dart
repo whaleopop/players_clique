@@ -27,7 +27,7 @@ import '../../components/posts/video_player_section.dart';
 
 
 const List<List<Color>> _kBannerGradients = [
-  [Color(0xFF0071BC), Color(0xFF29B6F6)],
+  [Color(0xFF366837), Color(0xFFC84926)],
   [Color(0xFF6C63FF), Color(0xFFB39DDB)],
   [Color(0xFFFC3F1D), Color(0xFFFF8C69)],
   [Color(0xFF00897B), Color(0xFF4DB6AC)],
@@ -393,7 +393,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
             child: const Text('Отмена'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0071BC)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF366837)),
             onPressed: () async {
               Navigator.of(context).pop();
               if (_currentUid == null) return;
@@ -795,17 +795,17 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0071BC).withValues(alpha: 0.08),
+                        color: const Color(0xFF366837).withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF0071BC).withValues(alpha: 0.2)),
+                        border: Border.all(color: const Color(0xFF366837).withValues(alpha: 0.2)),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_a_photo_outlined, size: 18, color: Color(0xFF0071BC)),
+                          Icon(Icons.add_a_photo_outlined, size: 18, color: Color(0xFF366837)),
                           SizedBox(width: 8),
                           Text('Изменить фото профиля',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF0071BC))),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF366837))),
                         ],
                       ),
                     ),
@@ -871,7 +871,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                             color: Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(8),
                             border: hasCustomBanner
-                                ? Border.all(color: const Color(0xFF0071BC), width: 2)
+                                ? Border.all(color: const Color(0xFF366837), width: 2)
                                 : null,
                           ),
                           child: Icon(Icons.add_photo_alternate_outlined,
@@ -885,7 +885,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0071BC),
+                        backgroundColor: const Color(0xFF366837),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
@@ -947,7 +947,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
             ),
           ],
         ),
-        child: Icon(icon, size: 22, color: const Color(0xFF0071BC)),
+        child: Icon(icon, size: 22, color: const Color(0xFF366837)),
       ),
     );
   }
@@ -1225,7 +1225,7 @@ class _PostOwnerSheet extends StatelessWidget {
                   // Comments button
                   ListTile(
                     leading: const Icon(Icons.chat_bubble_outline,
-                        color: Color(0xFF0071BC)),
+                        color: Color(0xFF366837)),
                     title: Text(
                       'Комментарии ($commentCount)',
                       style: const TextStyle(fontSize: 14),

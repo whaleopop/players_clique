@@ -106,7 +106,7 @@ class _MyHomePage extends State<MyHomePage> {
           vertical: 10,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0071BC) : Colors.transparent,
+          color: isSelected ? const Color(0xFF366837) : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(

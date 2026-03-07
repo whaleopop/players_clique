@@ -18,14 +18,14 @@ class Buttons extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF0071BC), Color(0xFF29ABE2)],
+              colors: [Color(0xFF366837), Color(0xFFC84926)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0071BC).withValues(alpha: 0.35),
+                color: const Color(0xFF366837).withValues(alpha: 0.35),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
                 spreadRadius: 0,

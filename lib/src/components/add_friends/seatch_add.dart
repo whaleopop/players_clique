@@ -111,7 +111,7 @@ class _MessageProfileAddState extends State<MessageProfileAdd> {
                 width: 50,
                 padding: EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Color(0xFF0071BC),
+                  color: Color(0xFF366837),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
