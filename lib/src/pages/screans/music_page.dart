@@ -60,6 +60,7 @@ class _MusicPageState extends State<Music_Page> {
 
   // ── Legend ────────────────────────────────────────────────────────────────
   bool _isLegend = false;
+  bool _isReplacing = false;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
@@ -267,19 +268,25 @@ class _MusicPageState extends State<Music_Page> {
 
   Future<void> _replaceTrack(TrackInfo track) async {
     if (!_isLegend) return;
+    if (_isReplacing) return;
     final uid = _uid;
     if (uid == null) return;
 
+    setState(() => _isReplacing = true);
     PlatformFile? file;
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.audio,
         withData: kIsWeb,
       );
-      if (result == null || result.files.isEmpty) return;
+      if (result == null || result.files.isEmpty) {
+        if (mounted) setState(() => _isReplacing = false);
+        return;
+      }
       file = result.files.first;
     } catch (e) {
       if (mounted) {
+        setState(() => _isReplacing = false);
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Не удалось открыть файл: $e')));
       }
@@ -339,6 +346,8 @@ class _MusicPageState extends State<Music_Page> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Ошибка: $e')));
       }
+    } finally {
+      if (mounted) setState(() => _isReplacing = false);
     }
   }
 
