@@ -448,14 +448,16 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
   Widget build(BuildContext context) {
     super.build(context);
     return SafeArea(
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: CustomScrollView(
-          slivers: [
-            // Профиль: баннер + аватар + инфо
-            SliverToBoxAdapter(
-              child: StreamBuilder<DocumentSnapshot>(
-                stream: _userStream,
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: NestedScrollView(
+            headerSliverBuilder: (_, __) => [
+              // Профиль: баннер + аватар + инфо
+              SliverToBoxAdapter(
+                child: StreamBuilder<DocumentSnapshot>(
+                  stream: _userStream,
                 builder: (context, snapshot) {
                   final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
                   final photoUrl = data['photourl'] as String? ?? '';
@@ -666,45 +668,158 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                 },
               ),
             ),
-            // Разделитель
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-            // Сетка постов
-            StreamBuilder<QuerySnapshot>(
-              stream: _postsStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                  );
-                }
-                final docs = snapshot.data?.docs ?? [];
-                if (docs.isEmpty) {
-                  return const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: Text('Нет постов', style: TextStyle(color: Colors.grey))),
-                    ),
-                  );
-                }
-                return SliverGrid(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _buildPostTile(docs[index]),
-                    childCount: docs.length,
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _TabBarDelegate(
+                  TabBar(
+                    labelColor: const Color(0xFF366837),
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: const Color(0xFF366837),
+                    dividerColor: Colors.transparent,
+                    tabs: const [
+                      Tab(icon: Icon(Icons.grid_on_rounded), text: 'Посты'),
+                      Tab(icon: Icon(Icons.music_note_rounded), text: 'Музыка'),
+                    ],
                   ),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 2,
-                    mainAxisSpacing: 2,
-                  ),
-                );
-              },
+                ),
+              ),
+            ],
+            body: TabBarView(
+              children: [
+                _buildPostsTab(),
+                _buildMusicTab(),
+              ],
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPostsTab() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _postsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = (snapshot.data?.docs ?? []).where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return (data['mediaType'] as String? ?? 'image') != 'trackReplace';
+        }).toList();
+        if (docs.isEmpty) {
+          return const Center(
+            child: Text('Нет постов', style: TextStyle(color: Colors.grey)),
+          );
+        }
+        return GridView.builder(
+          padding: EdgeInsets.zero,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
+          ),
+          itemCount: docs.length,
+          itemBuilder: (context, index) => _buildPostTile(docs[index]),
+        );
+      },
+    );
+  }
+
+  Widget _buildMusicTab() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _postsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = (snapshot.data?.docs ?? []).where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return (data['mediaType'] as String?) == 'trackReplace';
+        }).toList();
+        if (docs.isEmpty) {
+          return const Center(
+            child: Text('Нет замен треков', style: TextStyle(color: Colors.grey)),
+          );
+        }
+        return ListView.builder(
+          itemCount: docs.length,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final title = data['trackTitle'] as String? ?? data['namePost'] as String? ?? '';
+            final artist = data['trackArtist'] as String? ?? data['descPost'] as String? ?? '';
+            final cover = data['trackCoverUrl'] as String? ?? data['imageUrl'] as String? ?? '';
+            return GestureDetector(
+              onTap: () => _showPostDetail(docs[index]),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1A1A2E), Color(0xFF0F3460)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: cover.isNotEmpty
+                                ? CachedNetworkImage(imageUrl: cover, width: 60, height: 60, fit: BoxFit.cover,
+                                    errorWidget: (_, __, ___) => _musicCoverPlaceholder())
+                                : _musicCoverPlaceholder(),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFC107),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.bolt_rounded, size: 10, color: Color(0xFF5D4037)),
+                                      SizedBox(width: 3),
+                                      Text('Лега заменил трек', style: TextStyle(
+                                          color: Color(0xFF5D4037), fontSize: 10, fontWeight: FontWeight.w800)),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                                const SizedBox(height: 2),
+                                Text(artist, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                      child: Image.asset('assets/image/swag.jpg', fit: BoxFit.cover, height: 140),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -951,6 +1066,36 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
     );
   }
 
+  Widget _musicCoverPlaceholder() => Container(
+        width: 60, height: 60,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFC107).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.music_note_rounded, color: Color(0xFFFFC107), size: 28),
+      );
+
+}
+
+class _TabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+  const _TabBarDelegate(this.tabBar);
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
 }
 
 class _FriendTile extends StatefulWidget {
