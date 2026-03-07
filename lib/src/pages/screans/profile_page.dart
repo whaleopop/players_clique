@@ -452,8 +452,8 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
         length: 2,
         child: Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: NestedScrollView(
-            headerSliverBuilder: (_, __) => [
+          body: CustomScrollView(
+            slivers: [
               // Профиль: баннер + аватар + инфо
               SliverToBoxAdapter(
                 child: StreamBuilder<DocumentSnapshot>(
@@ -683,13 +683,15 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                   ),
                 ),
               ),
+              SliverFillRemaining(
+                child: TabBarView(
+                  children: [
+                    _buildPostsTab(),
+                    _buildMusicTab(),
+                  ],
+                ),
+              ),
             ],
-            body: TabBarView(
-              children: [
-                _buildPostsTab(),
-                _buildMusicTab(),
-              ],
-            ),
           ),
         ),
       ),
