@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io' show File;
 
+import 'package:cached_network_image/cached_network_image.dart';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
@@ -641,9 +643,9 @@ class _MusicPageState extends State<Music_Page> {
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(7),
         child: t.coverUrl != null
-            ? Image.network(t.coverUrl!, width: 46, height: 46,
+            ? CachedNetworkImage(imageUrl: t.coverUrl!, width: 46, height: 46,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _trackPlaceholder())
+                errorWidget: (_, __, ___) => _trackPlaceholder())
             : _trackPlaceholder(),
       ),
       title: Text(t.title,
@@ -704,9 +706,9 @@ class _MusicPageState extends State<Music_Page> {
                 if (t.coverUrl != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.network(t.coverUrl!, width: 40, height: 40,
+                    child: CachedNetworkImage(imageUrl: t.coverUrl!, width: 40, height: 40,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const SizedBox()),
+                        errorWidget: (_, __, ___) => const SizedBox()),
                   ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -803,9 +805,9 @@ class _MusicPageState extends State<Music_Page> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: track.coverUrl != null
-                      ? Image.network(track.coverUrl!, width: 42, height: 42,
+                      ? CachedNetworkImage(imageUrl: track.coverUrl!, width: 42, height: 42,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _trackPlaceholder())
+                          errorWidget: (_, __, ___) => _trackPlaceholder())
                       : _trackPlaceholder(),
                 ),
                 const SizedBox(width: 10),
@@ -1031,7 +1033,7 @@ class _YandexArtistPageState extends State<_YandexArtistPage> {
                       shadows: [Shadow(blurRadius: 8)])),
               background: _artist?.coverUrl != null
                   ? Stack(fit: StackFit.expand, children: [
-                      Image.network(_artist!.coverUrl!, fit: BoxFit.cover),
+                      CachedNetworkImage(imageUrl: _artist!.coverUrl!, fit: BoxFit.cover),
                       Container(
                           decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -1127,7 +1129,7 @@ class _YandexArtistPageState extends State<_YandexArtistPage> {
                             leading: ClipRRect(
                               borderRadius: BorderRadius.circular(7),
                               child: t.coverUrl != null
-                                  ? Image.network(t.coverUrl!, width: 46,
+                                  ? CachedNetworkImage(imageUrl: t.coverUrl!, width: 46,
                                       height: 46, fit: BoxFit.cover)
                                   : Container(
                                       width: 46, height: 46,

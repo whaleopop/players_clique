@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -360,7 +361,7 @@ class _ChatPageState extends State<ChatPage> {
               CircleAvatar(
                 radius: 18,
                 backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                    ? NetworkImage(_avatarUrl!) as ImageProvider
+                    ? CachedNetworkImageProvider(_avatarUrl!) as ImageProvider
                     : null,
                 backgroundColor: const Color(0xFFCCE5CC),
                 child: (_avatarUrl == null || _avatarUrl!.isEmpty)
@@ -477,7 +478,7 @@ class _ChatPageState extends State<ChatPage> {
             CircleAvatar(
               radius: 14,
               backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                  ? NetworkImage(_avatarUrl!) as ImageProvider
+                  ? CachedNetworkImageProvider(_avatarUrl!) as ImageProvider
                   : null,
               backgroundColor: const Color(0xFFCCE5CC),
               child: (_avatarUrl == null || _avatarUrl!.isEmpty)

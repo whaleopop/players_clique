@@ -6,7 +6,7 @@ import '../../services/auth/auth_service.dart';
 class ProfilePlayerPreview extends StatefulWidget {
   final void Function()? onTap;
   final String text;
-  final Image iconProfile;
+  final ImageProvider iconProfile;
   final String uid;
 
   const ProfilePlayerPreview({
@@ -59,7 +59,7 @@ class _ProfilePlayer extends State<ProfilePlayerPreview> {
               ),
               child: ClipOval(
                 child: Image(
-                  image: widget.iconProfile.image, // Используйте свойство image из ImageProvider
+                  image: widget.iconProfile,
                   fit: BoxFit.cover, // Установите BoxFit.cover
                 ),
               ),

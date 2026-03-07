@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:players_clique/src/pages/screans/chat/chat_page.dart';
@@ -114,7 +115,7 @@ class _ProfilePlayerState extends State<Profile_Player> {
                     radius: 52,
                     backgroundColor: const Color(0xFFCCE5CC),
                     backgroundImage: photo.isNotEmpty
-                        ? NetworkImage(photo)
+                        ? CachedNetworkImageProvider(photo)
                         : null,
                     child: photo.isEmpty
                         ? const Icon(Icons.person,
@@ -250,8 +251,8 @@ class _ProfilePlayerState extends State<Profile_Player> {
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.network(
-                data['imageUrl'] ?? '',
+              child: CachedNetworkImage(
+                imageUrl: data['imageUrl'] ?? '',
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
@@ -365,7 +366,7 @@ class _FriendTileState extends State<_FriendTile> {
         onTap: () => _openProfile(context),
         child: CircleAvatar(
           backgroundColor: const Color(0xFFCCE5CC),
-          backgroundImage: photo.isNotEmpty ? NetworkImage(photo) : null,
+          backgroundImage: photo.isNotEmpty ? CachedNetworkImageProvider(photo) : null,
           child: photo.isEmpty
               ? const Icon(Icons.person, color: Colors.white)
               : null,

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/post.dart';
@@ -23,10 +24,10 @@ class ImagePost extends StatelessWidget {
             width: 1.0,
           ),
         ),
-        child: Image.network(
-          imageUrl,
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Container(
+          errorWidget: (_, __, ___) => Container(
             color: Colors.grey.shade200,
             child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
           ),

@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../utils/web_update.dart';
 import '../../services/music_service.dart';
 import 'artist_page.dart';
@@ -213,10 +215,10 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
       return SizedBox(
         height: _kBannerHeight,
         width: double.infinity,
-        child: Image.network(
-          imageUrl,
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _gradientBanner(colorIdx),
+          errorWidget: (_, __, ___) => _gradientBanner(colorIdx),
         ),
       );
     }
@@ -311,8 +313,8 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
           fit: StackFit.expand,
           children: [
             if (imageUrl.isNotEmpty)
-              Image.network(imageUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A1A2E))),
+              CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => Container(color: const Color(0xFF1A1A2E))),
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -518,7 +520,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                                 CircleAvatar(
                                   radius: _kAvatarRadius,
                                   backgroundColor: const Color(0xFFCCE5CC),
-                                  backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                                  backgroundImage: photoUrl.isNotEmpty ? CachedNetworkImageProvider(photoUrl) : null,
                                   child: photoUrl.isEmpty
                                       ? const Icon(Icons.person, size: _kAvatarRadius, color: Colors.white)
                                       : null,
@@ -985,7 +987,7 @@ class _FriendTileState extends State<_FriendTile> {
     return ListTile(
       leading: CircleAvatar(
         backgroundImage: (_photo != null && _photo!.isNotEmpty)
-            ? NetworkImage(_photo!) as ImageProvider
+            ? CachedNetworkImageProvider(_photo!) as ImageProvider
             : null,
         backgroundColor: const Color(0xFFCCE5CC),
         child: (_photo == null || _photo!.isEmpty)
@@ -1106,8 +1108,8 @@ class _PostOwnerSheet extends StatelessWidget {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: cover.isNotEmpty
-                                  ? Image.network(cover, width: 90, height: 90, fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => _trackCoverPlaceholder())
+                                  ? CachedNetworkImage(imageUrl: cover, width: 90, height: 90, fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => _trackCoverPlaceholder())
                                   : _trackCoverPlaceholder(),
                             ),
                             const SizedBox(width: 16),
@@ -1151,10 +1153,10 @@ class _PostOwnerSheet extends StatelessWidget {
                     }
                     return AspectRatio(
                       aspectRatio: 1.0,
-                      child: Image.network(
-                        data['imageUrl'] ?? '',
+                      child: CachedNetworkImage(
+                        imageUrl: data['imageUrl'] ?? '',
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorWidget: (_, __, ___) => Container(
                           color: Colors.grey.shade100,
                           child: const Center(
                             child: Icon(Icons.broken_image_outlined,
@@ -1350,8 +1352,8 @@ class _NowPlayingWidget extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(7),
                 child: track.coverUrl != null
-                    ? Image.network(track.coverUrl!, width: 42, height: 42, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => coverPlaceholder())
+                    ? CachedNetworkImage(imageUrl: track.coverUrl!, width: 42, height: 42, fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => coverPlaceholder())
                     : coverPlaceholder(),
               ),
               const SizedBox(width: 10),

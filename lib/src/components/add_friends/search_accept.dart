@@ -6,7 +6,7 @@ import '../../services/auth/auth_service.dart';
 class MessageProfileAccept extends StatefulWidget {
   final void Function()? onTap;
   final String text;
-  final Image iconProfile;
+  final ImageProvider iconProfile;
   final String uid;
 
   const MessageProfileAccept({
@@ -129,7 +129,7 @@ class _MessageProfileAcceptState extends State<MessageProfileAccept> {
               ),
               child: ClipOval(
                 child: Image(
-                  image: widget.iconProfile.image, // Используйте свойство image из ImageProvider
+                  image: widget.iconProfile,
                   fit: BoxFit.cover, // Установите BoxFit.cover
                 ),
               ),

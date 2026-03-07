@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -146,7 +147,7 @@ class _AllPeopleList extends State<AllPeopleList> {
     if (_auth.currentUser!.email != data['email']) {
       return ListTile(
         title: MessageProfileAdd(
-          iconProfile: Image.network(data['photourl']),
+          iconProfile: CachedNetworkImageProvider(data['photourl'] ?? ''),
           onTap: () {},
           text: data['fio'],
           uid: data['uid'],

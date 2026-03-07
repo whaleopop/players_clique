@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -146,14 +147,12 @@ class _LentaPostState extends State<LentaPost> {
                               height: 36,
                               child: _photoUrl != null &&
                                       _photoUrl!.isNotEmpty
-                                  ? Image.network(
-                                      _photoUrl!,
+                                  ? CachedNetworkImage(
+                                      imageUrl: _photoUrl!,
                                       width: 36,
                                       height: 36,
                                       fit: BoxFit.cover,
-                                      cacheWidth: 72,
-                                      cacheHeight: 72,
-                                      errorBuilder: (_, __, ___) =>
+                                      errorWidget: (_, __, ___) =>
                                           _avatarFallback(),
                                     )
                                   : _avatarFallback(),
@@ -182,28 +181,20 @@ class _LentaPostState extends State<LentaPost> {
                   else if (widget.imageUrl.isNotEmpty)
                     AspectRatio(
                       aspectRatio: 1.0,
-                      child: Image.network(
-                        widget.imageUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.imageUrl,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        cacheWidth: 800,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return Container(
-                            color: cs.surfaceContainerHighest,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value: progress.expectedTotalBytes != null
-                                    ? progress.cumulativeBytesLoaded /
-                                        progress.expectedTotalBytes!
-                                    : null,
-                                strokeWidth: 2,
-                                color: const Color(0xFF366837),
-                              ),
+                        placeholder: (context, url) => Container(
+                          color: cs.surfaceContainerHighest,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF366837),
                             ),
-                          );
-                        },
-                        errorBuilder: (_, __, ___) => Container(
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
                           color: Colors.grey.shade100,
                           child: const Center(
                             child: Icon(Icons.broken_image_outlined,
@@ -314,8 +305,8 @@ class _TrackReplaceCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: coverUrl.isNotEmpty
-                      ? Image.network(coverUrl, width: 70, height: 70, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _coverPlaceholder())
+                      ? CachedNetworkImage(imageUrl: coverUrl, width: 70, height: 70, fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => _coverPlaceholder())
                       : _coverPlaceholder(),
                 ),
                 const SizedBox(width: 14),

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -142,7 +143,7 @@ class _Message_Page extends State<Message_Page> with AutomaticKeepAliveClientMix
         final photo = user['photourl'] as String? ?? '';
         return MessageProfile(
           iconProfile: photo.isNotEmpty
-              ? NetworkImage(photo)
+              ? CachedNetworkImageProvider(photo)
               : const AssetImage('assets/image/sportman1.png') as ImageProvider,
           onTap: () => Navigator.push(
             context,
@@ -192,7 +193,7 @@ class _Message_Page extends State<Message_Page> with AutomaticKeepAliveClientMix
             final photo = d['photourl'] as String? ?? '';
             return MessageProfile(
               iconProfile: photo.isNotEmpty
-                  ? NetworkImage(photo)
+                  ? CachedNetworkImageProvider(photo)
                   : const AssetImage('assets/image/sportman1.png')
                       as ImageProvider,
               onTap: () => Navigator.push(

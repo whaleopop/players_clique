@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class ChatBubble extends StatelessWidget {
@@ -161,9 +162,9 @@ class ChatBubble extends StatelessWidget {
             builder: (_) => Dialog(
               backgroundColor: Colors.transparent,
               child: InteractiveViewer(
-                child: Image.network(
-                  mediaUrl!,
-                  errorBuilder: (_, __, ___) =>
+                child: CachedNetworkImage(
+                  imageUrl: mediaUrl!,
+                  errorWidget: (_, __, ___) =>
                       const Icon(Icons.broken_image_outlined, color: Colors.white, size: 64),
                 ),
               ),
@@ -179,20 +180,17 @@ class ChatBubble extends StatelessWidget {
           bottomRight: Radius.circular(isMe ? 4 : 18),
         ),
         child: mediaUrl != null
-            ? Image.network(
-                mediaUrl!,
+            ? CachedNetworkImage(
+                imageUrl: mediaUrl!,
                 width: 220,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    width: 220,
-                    height: 160,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: (context, url) => Container(
+                  width: 220,
+                  height: 160,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (_, __, ___) => Container(
                   width: 220,
                   height: 160,
                   color: Colors.grey.shade200,
