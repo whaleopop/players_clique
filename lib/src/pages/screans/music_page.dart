@@ -298,6 +298,26 @@ class _MusicPageState extends State<Music_Page> {
         'uploadedAt': FieldValue.serverTimestamp(),
       });
 
+      // Создаём пост в ленте
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(uid)
+          .collection('post')
+          .add({
+        'userId': uid,
+        'namePost': track.title,
+        'descPost': track.artist,
+        'imageUrl': track.coverUrl ?? '',
+        'mediaType': 'trackReplace',
+        'trackId': track.id,
+        'trackTitle': track.title,
+        'trackArtist': track.artist,
+        'trackCoverUrl': track.coverUrl ?? '',
+        'replacementUrl': url,
+        'timestamp': FieldValue.serverTimestamp(),
+        'likedBy': <String>[],
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Версия загружена для всех')));
@@ -683,7 +703,13 @@ class _MusicPageState extends State<Music_Page> {
                 leading: const Icon(Icons.upload_file_rounded, color: Color(0xFFFFD700)),
                 title: const Text('Заменить версию (глобально)'),
                 subtitle: const Text('Альтернативный файл услышат все'),
-                onTap: () { Navigator.pop(context); _replaceTrack(t); },
+                onTap: () {
+                  Navigator.pop(context);
+                  Future.delayed(
+                    const Duration(milliseconds: 350),
+                    () => _replaceTrack(t),
+                  );
+                },
               ),
             if (t.artistId.isNotEmpty && _token != null)
               ListTile(
@@ -1071,6 +1097,7 @@ class _YandexArtistPageState extends State<_YandexArtistPage> {
                                       ),
                                     );
                                     if (confirmed == true) {
+                                      await Future.delayed(const Duration(milliseconds: 350));
                                       widget.onReplace(t);
                                     }
                                   }

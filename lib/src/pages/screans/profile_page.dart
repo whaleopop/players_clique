@@ -307,6 +307,30 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
       );
     }
 
+    if (mediaType == 'trackReplace') {
+      return GestureDetector(
+        onTap: () => _showPostDetail(doc),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (imageUrl.isNotEmpty)
+              Image.network(imageUrl, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A1A2E))),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.transparent, Colors.black54],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+            const Center(child: Icon(Icons.music_note_rounded, color: Color(0xFFFFC107), size: 28)),
+          ],
+        ),
+      );
+    }
+
     if (imageUrl.isEmpty) return const SizedBox.shrink();
 
     return GestureDetector(
@@ -499,7 +523,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
                                   backgroundColor: Colors.lightBlue.shade100,
                                   backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
                                   child: photoUrl.isEmpty
-                                      ? Icon(Icons.person, size: _kAvatarRadius, color: Colors.white)
+                                      ? const Icon(Icons.person, size: _kAvatarRadius, color: Colors.white)
                                       : null,
                                 ),
                                 // Online indicator
@@ -1061,12 +1085,70 @@ class _PostOwnerSheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Media: video or image
+                  // Media: track replace / video / image
                   Builder(builder: (_) {
                     final mediaType =
                         data['mediaType'] as String? ?? 'image';
                     final videoUrl =
                         data['videoUrl'] as String? ?? '';
+                    if (mediaType == 'trackReplace') {
+                      final title = data['trackTitle'] as String? ?? data['namePost'] as String? ?? '';
+                      final artist = data['trackArtist'] as String? ?? data['descPost'] as String? ?? '';
+                      final cover = data['trackCoverUrl'] as String? ?? data['imageUrl'] as String? ?? '';
+                      return Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF1A1A2E), Color(0xFF0F3460)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: cover.isNotEmpty
+                                  ? Image.network(cover, width: 90, height: 90, fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => _trackCoverPlaceholder())
+                                  : _trackCoverPlaceholder(),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFC107),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.bolt_rounded, size: 11, color: Color(0xFF5D4037)),
+                                        SizedBox(width: 3),
+                                        Text('Лега заменил трек',
+                                            style: TextStyle(color: Color(0xFF5D4037), fontSize: 11, fontWeight: FontWeight.w800)),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(title,
+                                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                                  const SizedBox(height: 4),
+                                  Text(artist,
+                                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                     if (mediaType == 'video' && videoUrl.isNotEmpty) {
                       return VideoPlayerSection(videoUrl: videoUrl);
                     }
@@ -1160,6 +1242,15 @@ class _PostOwnerSheet extends StatelessWidget {
       },
     );
   }
+
+  Widget _trackCoverPlaceholder() => Container(
+        width: 90, height: 90,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFC107).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.music_note_rounded, color: Color(0xFFFFC107), size: 36),
+      );
 }
 
 // ── Who liked section ────────────────────────────────────────────────────────

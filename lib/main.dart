@@ -187,6 +187,53 @@ class MyApp extends StatelessWidget {
         ),
 
         home: const AuthGate(),
+        builder: (context, child) {
+          final bottom = MediaQuery.of(context).viewInsets.bottom;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return GestureDetector(
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            behavior: HitTestBehavior.translucent,
+            child: Stack(
+              children: [
+                child!,
+                if (bottom > 0)
+                  Positioned(
+                    bottom: bottom,
+                    left: 0,
+                    right: 0,
+                    child: Material(
+                      color: isDark
+                          ? const Color(0xFF2C2C2E)
+                          : const Color(0xFFD1D1D6),
+                      child: SizedBox(
+                        height: 44,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                              child: Text(
+                                'Готово',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0071BC),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

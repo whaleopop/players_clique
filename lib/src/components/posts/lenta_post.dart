@@ -174,8 +174,10 @@ class _LentaPostState extends State<LentaPost> {
                       ],
                     ),
                   ),
-                  // Media: image or video
-                  if (mediaType == 'video' && videoUrl.isNotEmpty)
+                  // Media: track replace / video / image
+                  if (mediaType == 'trackReplace')
+                    _TrackReplaceCard(postData: postData)
+                  else if (mediaType == 'video' && videoUrl.isNotEmpty)
                     VideoPlayerSection(videoUrl: videoUrl)
                   else if (widget.imageUrl.isNotEmpty)
                     AspectRatio(
@@ -281,5 +283,92 @@ class _LentaPostState extends State<LentaPost> {
       child: const Icon(Icons.person, size: 18, color: Colors.white),
     );
   }
+}
+
+class _TrackReplaceCard extends StatelessWidget {
+  final Map<String, dynamic> postData;
+  const _TrackReplaceCard({required this.postData});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = postData['trackTitle'] as String? ?? postData['namePost'] as String? ?? '';
+    final artist = postData['trackArtist'] as String? ?? postData['descPost'] as String? ?? '';
+    final coverUrl = postData['trackCoverUrl'] as String? ?? postData['imageUrl'] as String? ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1A1A2E), Color(0xFF0F3460)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Cover
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: coverUrl.isNotEmpty
+                ? Image.network(coverUrl, width: 70, height: 70, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _coverPlaceholder())
+                : _coverPlaceholder(),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // "Лега" badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFC107),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bolt_rounded, size: 10, color: Color(0xFF5D4037)),
+                      SizedBox(width: 3),
+                      Text('Лега заменил трек', style: TextStyle(
+                          color: Color(0xFF5D4037), fontSize: 10, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(title,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                const SizedBox(height: 3),
+                Text(artist,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFC107),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.upload_rounded, color: Color(0xFF5D4037), size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _coverPlaceholder() => Container(
+        width: 70, height: 70,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFC107).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.music_note_rounded, color: Color(0xFFFFC107), size: 30),
+      );
 }
 
