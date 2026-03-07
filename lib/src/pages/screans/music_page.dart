@@ -276,7 +276,8 @@ class _MusicPageState extends State<Music_Page> {
     PlatformFile? file;
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
+        type: FileType.custom,
+        allowedExtensions: ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac'],
         withData: kIsWeb,
       );
       if (result == null || result.files.isEmpty) {

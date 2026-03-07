@@ -115,10 +115,7 @@ class _Profile_Page extends State<Profile_Page> with AutomaticKeepAliveClientMix
   Uint8List? _selectedFileBytes;
 
   Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'png', 'pdf', 'doc'],
-    );
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
     img.Image cropToSquare(img.Image image) {
       int size = min(image.width, image.height);
       int x = (image.width - size) ~/ 2;
