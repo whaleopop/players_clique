@@ -60,6 +60,19 @@ class _MusicPageState extends State<Music_Page> {
   Duration _pos = Duration.zero;
   Duration _dur = Duration.zero;
 
+  // ── Shuffle ───────────────────────────────────────────────────────────────
+  bool _isShuffle = false;
+
+  void _toggleShuffle() {
+    setState(() => _isShuffle = !_isShuffle);
+    if (_isShuffle && _queue.isNotEmpty) {
+      final current = _queue[_queueIdx];
+      final rest = [..._queue]..removeAt(_queueIdx)..shuffle();
+      _queue = [current, ...rest];
+      _queueIdx = 0;
+    }
+  }
+
   // ── Legend ────────────────────────────────────────────────────────────────
   bool _isLegend = false;
   bool _isReplacing = false;
@@ -72,6 +85,21 @@ class _MusicPageState extends State<Music_Page> {
   @override
   void initState() {
     super.initState();
+    // Фоновое воспроизведение
+    AudioPlayer.global.setAudioContext(AudioContext(
+      android: const AudioContextAndroid(
+        isSpeakerphoneOn: false,
+        stayAwake: true,
+        contentType: AndroidContentType.music,
+        usageType: AndroidUsageType.media,
+        audioFocus: AndroidAudioFocus.gain,
+      ),
+      iOS: AudioContextIOS(
+        category: AVAudioSessionCategory.playback,
+        options: const {},
+      ),
+    ));
+
     _player.onPositionChanged.listen((p) { if (mounted) setState(() => _pos = p); });
     _player.onDurationChanged.listen((d) { if (mounted) setState(() => _dur = d); });
     _player.onPlayerStateChanged.listen((s) {
@@ -855,6 +883,16 @@ class _MusicPageState extends State<Music_Page> {
                   onPressed: _playNext,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                ),
+                IconButton(
+                  icon: Icon(Icons.shuffle_rounded,
+                      color: _isShuffle
+                          ? const Color(0xFFFC3F1D)
+                          : cs.onSurface.withValues(alpha: 0.4)),
+                  iconSize: 22,
+                  onPressed: _toggleShuffle,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 ),
               ],
             ),
