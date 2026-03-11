@@ -14,39 +14,30 @@ class Profile_Player extends StatefulWidget {
   State<Profile_Player> createState() => _ProfilePlayerState();
 }
 
-class _ProfilePlayerState extends State<Profile_Player> {
-  Map<String, dynamic> _userData = {};
-  List<DocumentSnapshot> _posts = [];
-  bool _loading = true;
+class _ProfilePlayerState extends State<Profile_Player>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  late final Stream<DocumentSnapshot> _userStream;
+  late final Stream<QuerySnapshot> _postsStream;
 
   @override
   void initState() {
     super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final userDoc = await FirebaseFirestore.instance
+    _userStream = FirebaseFirestore.instance
         .collection('users')
         .doc(widget.uid)
-        .get();
-    final postsSnap = await FirebaseFirestore.instance
+        .snapshots();
+    _postsStream = FirebaseFirestore.instance
         .collection('posts')
         .doc(widget.uid)
         .collection('post')
         .orderBy('timestamp', descending: true)
-        .get();
-    if (mounted) {
-      setState(() {
-        _userData = userDoc.data() ?? {};
-        _posts = postsSnap.docs;
-        _loading = false;
-      });
-    }
+        .snapshots();
   }
 
-  void _openFriendsList() {
-    final friends = List<String>.from(_userData['friends'] ?? []);
+  void _openFriendsList(List<String> friends) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -56,8 +47,7 @@ class _ProfilePlayerState extends State<Profile_Player> {
     );
   }
 
-  void _openChat() {
-    final fio = _userData['fio'] as String? ?? '';
+  void _openChat(String fio) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -71,165 +61,218 @@ class _ProfilePlayerState extends State<Profile_Player> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    super.build(context);
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _userStream,
+      builder: (context, userSnap) {
+        final userData =
+            (userSnap.data?.data() as Map<String, dynamic>?) ?? {};
+        final fio = userData['fio'] as String? ?? '';
+        final photo = userData['photourl'] as String? ?? '';
+        final banner = userData['bannerUrl'] as String? ?? '';
+        final friends = List<String>.from(userData['friends'] ?? []);
 
-    final fio = _userData['fio'] as String? ?? '';
-    final photo = _userData['photourl'] as String? ?? '';
-    final friends = List<String>.from(_userData['friends'] ?? []);
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF366837)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          fio,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: 17,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // --- Header card ---
-            Container(
-              color: Theme.of(context).colorScheme.surface,
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-              child: Column(
-                children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: 52,
-                    backgroundColor: const Color(0xFFCCE5CC),
-                    backgroundImage: photo.isNotEmpty
-                        ? CachedNetworkImageProvider(photo)
-                        : null,
-                    child: photo.isEmpty
-                        ? const Icon(Icons.person,
-                            size: 52, color: Colors.white)
-                        : null,
+        return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            body: CustomScrollView(
+              slivers: [
+                // ── App bar with banner ──────────────────────────────
+                SliverAppBar(
+                  expandedHeight: 180,
+                  pinned: true,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: Color(0xFF366837)),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
+                  title: Text(
                     fio,
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // Stats row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  centerTitle: true,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: banner.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: banner,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) =>
+                                Container(color: const Color(0xFF366837)),
+                          )
+                        : Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF366837), Color(0xFF1C4A1E)],
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+
+                // ── Profile header card ──────────────────────────────
+                SliverToBoxAdapter(
+                  child: Container(
+                    color: Theme.of(context).colorScheme.surface,
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                    child: Column(
+                      children: [
+                        // Avatar
+                        CircleAvatar(
+                          radius: 48,
+                          backgroundColor: const Color(0xFFCCE5CC),
+                          backgroundImage: photo.isNotEmpty
+                              ? CachedNetworkImageProvider(photo)
+                              : null,
+                          child: photo.isEmpty
+                              ? const Icon(Icons.person,
+                                  size: 48, color: Colors.white)
+                              : null,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          fio,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color:
+                                Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        // Stats row
+                        StreamBuilder<QuerySnapshot>(
+                          stream: _postsStream,
+                          builder: (context, postsSnap) {
+                            final posts = postsSnap.data?.docs ?? [];
+                            final regularPosts = posts
+                                .where((d) =>
+                                    (d.data()
+                                        as Map<String,
+                                            dynamic>)['mediaType'] !=
+                                    'trackReplace')
+                                .length;
+                            final musicPosts = posts
+                                .where((d) =>
+                                    (d.data()
+                                        as Map<String,
+                                            dynamic>)['mediaType'] ==
+                                    'trackReplace')
+                                .length;
+                            return Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.center,
+                              children: [
+                                _statItem(
+                                    regularPosts.toString(), 'Посты',
+                                    null),
+                                const SizedBox(width: 32),
+                                _statItem(
+                                    musicPosts.toString(), 'Треки',
+                                    null),
+                                const SizedBox(width: 32),
+                                _statItem(
+                                  friends.length.toString(),
+                                  'Друзья',
+                                  friends.isNotEmpty
+                                      ? () => _openFriendsList(friends)
+                                      : null,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        // Message button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () => _openChat(fio),
+                            icon: const Icon(
+                                Icons.chat_bubble_outline,
+                                size: 18),
+                            label: const Text('Написать'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color(0xFF366837),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── Sticky tab bar ───────────────────────────────────
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _TabBarDelegate(
+                    TabBar(
+                      labelColor:
+                          const Color(0xFF366837),
+                      unselectedLabelColor:
+                          Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.5),
+                      indicatorColor: const Color(0xFF366837),
+                      tabs: const [
+                        Tab(icon: Icon(Icons.grid_on_rounded, size: 20)),
+                        Tab(
+                            icon: Icon(
+                                Icons.music_note_rounded,
+                                size: 20)),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── Tab content ──────────────────────────────────────
+                SliverFillRemaining(
+                  child: TabBarView(
                     children: [
-                      _statItem(_posts.length.toString(), 'Посты', null),
-                      const SizedBox(width: 40),
-                      _statItem(
-                        friends.length.toString(),
-                        'Друзья',
-                        friends.isNotEmpty ? _openFriendsList : null,
-                      ),
+                      _PostsTab(
+                          postsStream: _postsStream,
+                          onTap: _showPostDialog),
+                      _MusicTab(postsStream: _postsStream),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  // Message button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _openChat,
-                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                      label: const Text('Написать'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF366837),
-                        foregroundColor: Colors.white,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            // --- Posts grid ---
-            if (_posts.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 48),
-                child: Column(
-                  children: [
-                    Icon(Icons.photo_library_outlined,
-                        size: 56, color: Theme.of(context).colorScheme.outline),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Постов пока нет',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55), fontSize: 15),
-                    ),
-                  ],
-                ),
-              )
-            else
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(2),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 2,
-                  mainAxisSpacing: 2,
-                ),
-                itemCount: _posts.length,
-                itemBuilder: (context, index) {
-                  final data =
-                      _posts[index].data() as Map<String, dynamic>;
-                  final imageUrl = data['imageUrl'] as String? ?? '';
-                  if (imageUrl.isEmpty) return const SizedBox.shrink();
-                  return GestureDetector(
-                    onTap: () => _showPostDialog(data),
-                    child: ImagePost(
-                      imageUrl: imageUrl,
-                      onTap: () => _showPostDialog(data),
-                    ),
-                  );
-                },
-              ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _statItem(String value, String label, VoidCallback? onTap) {
+  Widget _statItem(
+      String value, String label, VoidCallback? onTap) {
     final content = Column(
       children: [
         Text(value,
             style: const TextStyle(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1A1A2E))),
         const SizedBox(height: 2),
         Text(label,
-            style:
-                TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+            style: TextStyle(
+                fontSize: 12, color: Colors.grey.shade500)),
       ],
     );
     if (onTap != null) {
@@ -242,8 +285,8 @@ class _ProfilePlayerState extends State<Profile_Player> {
     showDialog(
       context: context,
       builder: (_) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,12 +298,13 @@ class _ProfilePlayerState extends State<Profile_Player> {
                 imageUrl: data['imageUrl'] ?? '',
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorWidget: (_, __, ___) =>
+                    const SizedBox(height: 180),
               ),
             ),
             if ((data['namePost'] as String? ?? '').isNotEmpty)
               Padding(
-                padding:
-                    const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Text(
                   data['namePost'],
                   style: const TextStyle(
@@ -282,7 +326,295 @@ class _ProfilePlayerState extends State<Profile_Player> {
   }
 }
 
-// --- Friends bottom sheet ---
+// ── Tab: Posts grid ────────────────────────────────────────────────────────
+
+class _PostsTab extends StatefulWidget {
+  final Stream<QuerySnapshot> postsStream;
+  final void Function(Map<String, dynamic>) onTap;
+
+  const _PostsTab({required this.postsStream, required this.onTap});
+
+  @override
+  State<_PostsTab> createState() => _PostsTabState();
+}
+
+class _PostsTabState extends State<_PostsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return StreamBuilder<QuerySnapshot>(
+      stream: widget.postsStream,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final posts = snap.data!.docs
+            .where((d) =>
+                (d.data() as Map<String, dynamic>)['mediaType'] !=
+                'trackReplace')
+            .toList();
+
+        if (posts.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.photo_library_outlined,
+                    size: 52,
+                    color: Theme.of(context).colorScheme.outline),
+                const SizedBox(height: 10),
+                Text('Постов пока нет',
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.5),
+                        fontSize: 15)),
+              ],
+            ),
+          );
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(2),
+          gridDelegate:
+              const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
+          ),
+          itemCount: posts.length,
+          itemBuilder: (context, index) {
+            final data =
+                posts[index].data() as Map<String, dynamic>;
+            final imageUrl = data['imageUrl'] as String? ?? '';
+            if (imageUrl.isEmpty) return const SizedBox.shrink();
+            return GestureDetector(
+              onTap: () => widget.onTap(data),
+              child: ImagePost(
+                imageUrl: imageUrl,
+                onTap: () => widget.onTap(data),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ── Tab: Music (trackReplace) ──────────────────────────────────────────────
+
+class _MusicTab extends StatefulWidget {
+  final Stream<QuerySnapshot> postsStream;
+
+  const _MusicTab({required this.postsStream});
+
+  @override
+  State<_MusicTab> createState() => _MusicTabState();
+}
+
+class _MusicTabState extends State<_MusicTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: widget.postsStream,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final tracks = snap.data!.docs
+            .where((d) =>
+                (d.data() as Map<String, dynamic>)['mediaType'] ==
+                'trackReplace')
+            .toList();
+
+        if (tracks.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.music_off_rounded,
+                    size: 52,
+                    color: Theme.of(context).colorScheme.outline),
+                const SizedBox(height: 10),
+                Text('Треков пока нет',
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.5),
+                        fontSize: 15)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          itemCount: tracks.length,
+          itemBuilder: (context, i) {
+            final data =
+                tracks[i].data() as Map<String, dynamic>;
+            final title =
+                data['trackTitle'] as String? ?? data['namePost'] ?? '';
+            final artist = data['trackArtist'] as String? ??
+                data['descPost'] ?? '';
+            final coverUrl = data['trackCoverUrl'] as String? ??
+                data['imageUrl'] as String? ?? '';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [
+                          const Color(0xFF1C2C1E),
+                          const Color(0xFF162218),
+                        ]
+                      : [
+                          Colors.white,
+                          const Color(0xFFF1F6F1),
+                        ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.07),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        // Cover
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: coverUrl.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: coverUrl,
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (_, __, ___) =>
+                                      _coverPlaceholder(),
+                                )
+                              : _coverPlaceholder(),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                artist,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.5)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.upload_file_rounded,
+                            color: Color(0xFF366837), size: 20),
+                      ],
+                    ),
+                  ),
+                  // Swag image
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(14)),
+                    child: Image.asset(
+                      'assets/image/swag.jpg',
+                      width: double.infinity,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _coverPlaceholder() => Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: const Color(0xFF366837).withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.music_note_rounded,
+            color: Color(0xFF366837), size: 24),
+      );
+}
+
+// ── Tab bar delegate ───────────────────────────────────────────────────────
+
+class _TabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+
+  const _TabBarDelegate(this.tabBar);
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
+}
+
+// ── Friends bottom sheet ───────────────────────────────────────────────────
+
 class _FriendsSheet extends StatelessWidget {
   final List<String> friendIds;
 
@@ -366,7 +698,9 @@ class _FriendTileState extends State<_FriendTile> {
         onTap: () => _openProfile(context),
         child: CircleAvatar(
           backgroundColor: const Color(0xFFCCE5CC),
-          backgroundImage: photo.isNotEmpty ? CachedNetworkImageProvider(photo) : null,
+          backgroundImage: photo.isNotEmpty
+              ? CachedNetworkImageProvider(photo)
+              : null,
           child: photo.isEmpty
               ? const Icon(Icons.person, color: Colors.white)
               : null,

@@ -1,9 +1,11 @@
+import 'package:audio_service/audio_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:players_clique/firebase_options.dart';
+import 'package:players_clique/src/services/audio_handler.dart';
 import 'package:players_clique/src/services/auth/auth_gate.dart';
 import 'package:players_clique/src/services/auth/auth_service.dart';
 import 'package:players_clique/src/services/music_service.dart';
@@ -95,6 +97,16 @@ void _showForegroundNotificationBanner(RemoteMessage message) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  audioHandler = await AudioService.init(
+    builder: () => PlayerAudioHandler(),
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.playersclique.audio',
+      androidNotificationChannelName: 'Музыка',
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+    ),
+  );
 
   // Request notification permission (iOS + Android 13+ + web).
   await FirebaseMessaging.instance.requestPermission(

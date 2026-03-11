@@ -57,6 +57,7 @@ dependencies:
   audioplayers: ^6.0.0
   crypto: ^3.0.0
   cached_network_image: ^3.4.1
+  audio_service: ^0.18.13
 
 dependency_overrides:
   # win32 5.2.0 uses UnmodifiableUint8ListView removed in Dart 3.3+

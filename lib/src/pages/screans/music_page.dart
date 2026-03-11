@@ -14,6 +14,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:audio_service/audio_service.dart';
+import '../../services/audio_handler.dart';
 import '../../services/music_service.dart';
 import '../../services/ynison_service.dart';
 
@@ -52,7 +54,6 @@ class _MusicPageState extends State<Music_Page> {
 
   // ── Player ────────────────────────────────────────────────────────────────
   late MusicService _musicService;
-  final _player = AudioPlayer();
   List<TrackInfo> _queue = [];
   int _queueIdx = -1;
   bool _isPlaying = false;
@@ -85,31 +86,19 @@ class _MusicPageState extends State<Music_Page> {
   @override
   void initState() {
     super.initState();
-    // Фоновое воспроизведение
-    AudioPlayer.global.setAudioContext(AudioContext(
-      android: const AudioContextAndroid(
-        isSpeakerphoneOn: false,
-        stayAwake: true,
-        contentType: AndroidContentType.music,
-        usageType: AndroidUsageType.media,
-        audioFocus: AndroidAudioFocus.gain,
-      ),
-      iOS: AudioContextIOS(
-        category: AVAudioSessionCategory.playback,
-        options: const {},
-      ),
-    ));
+    // Route next/prev through audio_service handler (enables lock-screen controls)
+    audioHandler.onNext = _playNext;
+    audioHandler.onPrev = _playPrev;
 
-    _player.onPositionChanged.listen((p) { if (mounted) setState(() => _pos = p); });
-    _player.onDurationChanged.listen((d) { if (mounted) setState(() => _dur = d); });
-    _player.onPlayerStateChanged.listen((s) {
+    audioHandler.player.onPositionChanged.listen((p) { if (mounted) setState(() => _pos = p); });
+    audioHandler.player.onDurationChanged.listen((d) { if (mounted) setState(() => _dur = d); });
+    audioHandler.player.onPlayerStateChanged.listen((s) {
       final playing = s == PlayerState.playing;
       if (mounted) {
         setState(() => _isPlaying = playing);
         _musicService.setPlaying(playing);
       }
     });
-    _player.onPlayerComplete.listen((_) => _playNext());
     _listCtrl.addListener(_onScroll);
     _searchCtrl.addListener(_onSearchChanged);
     _loadToken();
@@ -123,10 +112,11 @@ class _MusicPageState extends State<Music_Page> {
 
   @override
   void dispose() {
+    audioHandler.onNext = null;
+    audioHandler.onPrev = null;
     _searchDebounce?.cancel();
     _listCtrl.dispose();
     _searchCtrl.dispose();
-    _player.dispose();
     super.dispose();
   }
 
@@ -264,7 +254,12 @@ class _MusicPageState extends State<Music_Page> {
             const SnackBar(content: Text('Не удалось получить ссылку')));
         return;
       }
-      await _player.play(UrlSource(url));
+      await audioHandler.playUrl(url, MediaItem(
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        artUri: track.coverUrl != null ? Uri.tryParse(track.coverUrl!) : null,
+      ));
       if (mounted) {
         setState(() => _playerLoading = false);
         _musicService.setCurrentTrack(track, isPlaying: true);
@@ -280,7 +275,7 @@ class _MusicPageState extends State<Music_Page> {
 
   void _playPrev() {
     if (_pos.inSeconds > 3) {
-      _player.seek(Duration.zero);
+      audioHandler.seek(Duration.zero);
     } else if (_queueIdx > 0) {
       _playTrack(_queue, _queueIdx - 1);
     }
@@ -288,9 +283,9 @@ class _MusicPageState extends State<Music_Page> {
 
   Future<void> _togglePlayPause() async {
     if (_isPlaying) {
-      await _player.pause();
+      await audioHandler.pause();
     } else {
-      await _player.resume();
+      await audioHandler.play();
     }
   }
 
@@ -821,7 +816,7 @@ class _MusicPageState extends State<Music_Page> {
               activeColor: const Color(0xFFFC3F1D),
               inactiveColor: cs.onSurface.withValues(alpha: 0.1),
               onChanged: _dur.inMilliseconds > 0
-                  ? (v) => _player.seek(Duration(
+                  ? (v) => audioHandler.seek(Duration(
                       milliseconds: (v * _dur.inMilliseconds).round()))
                   : null,
             ),
