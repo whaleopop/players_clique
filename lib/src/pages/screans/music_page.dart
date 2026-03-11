@@ -77,6 +77,7 @@ class _MusicPageState extends State<Music_Page> {
   // ── Legend ────────────────────────────────────────────────────────────────
   bool _isLegend = false;
   bool _isReplacing = false;
+  bool _isAddingToArtist = false;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
@@ -374,6 +375,131 @@ class _MusicPageState extends State<Music_Page> {
       }
     } finally {
       if (mounted) setState(() => _isReplacing = false);
+    }
+  }
+
+  // ── Legend: добавить трек к артисту / создать артиста ────────────────────
+
+  Future<void> _addTrackToArtist(TrackInfo track) async {
+    if (!_isLegend) return;
+    if (_isAddingToArtist) return;
+    final uid = _uid;
+    if (uid == null) return;
+
+    // 1. Выбираем аудиофайл
+    setState(() => _isAddingToArtist = true);
+    PlatformFile? file;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac'],
+        withData: kIsWeb,
+      );
+      if (result == null || result.files.isEmpty) {
+        if (mounted) setState(() => _isAddingToArtist = false);
+        return;
+      }
+      file = result.files.first;
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isAddingToArtist = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Не удалось открыть файл: $e')));
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    // 2. Проверяем, существует ли артист в Firebase
+    final artistDocId = track.artistId.isNotEmpty ? track.artistId : uid;
+    final artistDoc = await FirebaseFirestore.instance
+        .collection('artists').doc(artistDocId).get();
+    final artistExists = artistDoc.exists;
+
+    if (!mounted) {
+      setState(() => _isAddingToArtist = false);
+      return;
+    }
+
+    // 3. Если артиста нет — подтверждаем создание
+    if (!artistExists) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Создать артиста?'),
+          content: Text(
+              'Артист "${track.artist}" ещё не зарегистрирован на платформе.\nСоздать профиль и добавить трек?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Отмена')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF)),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Создать', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) {
+        if (mounted) setState(() => _isAddingToArtist = false);
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Загрузка...')));
+
+    try {
+      // 4. Загружаем файл в Storage
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('artist_tracks/$artistDocId/${ts}_${file.name}');
+      final task = (!kIsWeb && file.path != null)
+          ? ref.putFile(File(file.path!))
+          : ref.putData(file.bytes!);
+      final snap = await task;
+      final url = await snap.ref.getDownloadURL();
+
+      // 5. Создаём профиль артиста, если не существует
+      if (!artistExists) {
+        await FirebaseFirestore.instance
+            .collection('artists').doc(artistDocId).set({
+          'name': track.artist,
+          'bio': '',
+          'uid': artistDocId,
+          'coverUrl': track.coverUrl ?? '',
+          'createdBy': uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // 6. Добавляем трек в подколлекцию артиста
+      final trackTitle = file.name.replaceAll(RegExp(r'\.[^.]+$'), '');
+      await FirebaseFirestore.instance
+          .collection('artists').doc(artistDocId).collection('tracks')
+          .add({
+        'title': trackTitle,
+        'audioUrl': url,
+        'timestamp': FieldValue.serverTimestamp(),
+        'uploadedBy': uid,
+        'yandexTrackId': track.id,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Трек добавлен к "${track.artist}"')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isAddingToArtist = false);
     }
   }
 
@@ -685,7 +811,8 @@ class _MusicPageState extends State<Music_Page> {
                     builder: (_) => _YandexArtistPage(
                         artistId: t.artistId, token: _token!,
                         isLegend: _isLegend,
-                        onReplace: _replaceTrack)))
+                        onReplace: _replaceTrack,
+                        onAddToArtist: _addTrackToArtist)))
             : null,
         child: Text(t.artist,
             maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -758,6 +885,19 @@ class _MusicPageState extends State<Music_Page> {
                   );
                 },
               ),
+            if (_isLegend)
+              ListTile(
+                leading: const Icon(Icons.person_add_rounded, color: Color(0xFF6C63FF)),
+                title: Text('Добавить к "${t.artist}"'),
+                subtitle: const Text('Загрузить трек в профиль артиста'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Future.delayed(
+                    const Duration(milliseconds: 350),
+                    () { if (mounted) _addTrackToArtist(t); },
+                  );
+                },
+              ),
             if (t.artistId.isNotEmpty && _token != null)
               ListTile(
                 leading: const Icon(Icons.person_rounded, color: Color(0xFFFC3F1D)),
@@ -768,7 +908,8 @@ class _MusicPageState extends State<Music_Page> {
                   Navigator.push(context, MaterialPageRoute(
                       builder: (_) => _YandexArtistPage(
                           artistId: t.artistId, token: _token!,
-                          isLegend: _isLegend, onReplace: _replaceTrack)));
+                          isLegend: _isLegend, onReplace: _replaceTrack,
+                          onAddToArtist: _addTrackToArtist)));
                 },
               ),
             const SizedBox(height: 8),
@@ -1009,12 +1150,14 @@ class _YandexArtistPage extends StatefulWidget {
   final String token;
   final bool isLegend;
   final Future<void> Function(TrackInfo) onReplace;
+  final Future<void> Function(TrackInfo) onAddToArtist;
 
   const _YandexArtistPage({
     required this.artistId,
     required this.token,
     required this.isLegend,
     required this.onReplace,
+    required this.onAddToArtist,
   });
 
   @override
@@ -1088,7 +1231,7 @@ class _YandexArtistPageState extends State<_YandexArtistPage> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Row(children: [
+                child: Wrap(spacing: 8, children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
@@ -1105,6 +1248,24 @@ class _YandexArtistPageState extends State<_YandexArtistPage> {
                           style: TextStyle(fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFFFFD700))),
+                    ]),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6C63FF).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: const Color(0xFF6C63FF).withValues(alpha: 0.4)),
+                    ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.person_add_rounded, size: 13,
+                          color: Color(0xFF6C63FF)),
+                      SizedBox(width: 5),
+                      Text('или добавить к артисту',
+                          style: TextStyle(fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6C63FF))),
                     ]),
                   ),
                 ]),
@@ -1129,35 +1290,79 @@ class _YandexArtistPageState extends State<_YandexArtistPage> {
                             contentPadding:
                                 const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                             onLongPress: widget.isLegend
-                                ? () async {
-                                    final confirmed = await showDialog<bool>(
-                                      context: context,
-                                      builder: (_) => AlertDialog(
-                                        title: const Text('Заменить трек?'),
-                                        content: Text(
-                                            '"${t.title}" — замена будет слышна всем пользователям.'),
-                                        actions: [
-                                          TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                              child: const Text('Отмена')),
-                                          ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      const Color(0xFFFFD700)),
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
-                                              child: const Text('Заменить',
-                                                  style: TextStyle(
-                                                      color: Colors.black))),
+                                ? () => showModalBottomSheet<void>(
+                                    context: context,
+                                    shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(16))),
+                                    builder: (_) => SafeArea(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 36, height: 4,
+                                            margin: const EdgeInsets.only(top: 10, bottom: 6),
+                                            decoration: BoxDecoration(
+                                                color: Colors.grey.withValues(alpha: 0.3),
+                                                borderRadius: BorderRadius.circular(2)),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                                            child: Row(children: [
+                                              if (t.coverUrl != null)
+                                                ClipRRect(
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  child: CachedNetworkImage(
+                                                      imageUrl: t.coverUrl!, width: 40,
+                                                      height: 40, fit: BoxFit.cover,
+                                                      errorWidget: (_, __, ___) => const SizedBox()),
+                                                ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                  Text(t.title, maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                          fontWeight: FontWeight.w600, fontSize: 13)),
+                                                  Text(t.artist, maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: TextStyle(fontSize: 11,
+                                                          color: Colors.grey.withValues(alpha: 0.6))),
+                                                ]),
+                                              ),
+                                            ]),
+                                          ),
+                                          const Divider(height: 1),
+                                          ListTile(
+                                            leading: const Icon(Icons.upload_file_rounded,
+                                                color: Color(0xFFFFD700)),
+                                            title: const Text('Заменить версию (глобально)'),
+                                            subtitle: const Text('Альтернативный файл услышат все'),
+                                            onTap: () {
+                                              Navigator.pop(context);
+                                              Future.delayed(
+                                                  const Duration(milliseconds: 350),
+                                                  () => widget.onReplace(t));
+                                            },
+                                          ),
+                                          ListTile(
+                                            leading: const Icon(Icons.person_add_rounded,
+                                                color: Color(0xFF6C63FF)),
+                                            title: Text('Добавить к "${t.artist}"'),
+                                            subtitle: const Text('Загрузить трек в профиль артиста'),
+                                            onTap: () {
+                                              Navigator.pop(context);
+                                              Future.delayed(
+                                                  const Duration(milliseconds: 350),
+                                                  () => widget.onAddToArtist(t));
+                                            },
+                                          ),
+                                          const SizedBox(height: 8),
                                         ],
                                       ),
-                                    );
-                                    if (confirmed == true) {
-                                      await Future.delayed(const Duration(milliseconds: 350));
-                                      widget.onReplace(t);
-                                    }
-                                  }
+                                    ))
                                 : null,
                             leading: ClipRRect(
                               borderRadius: BorderRadius.circular(7),
